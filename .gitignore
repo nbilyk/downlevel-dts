@@ -1,2 +1,4 @@
 node_modules/
 baselines/local/
+/.idea/
+/dist/

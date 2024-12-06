@@ -1,18 +1,25 @@
 #!/usr/bin/env node
-const sh = require("shelljs");
-const fs = require("fs");
-const ts = require("typescript");
-const path = require("path");
-const assert = require("assert");
-const semver = require("semver");
+import semver, { SemVer } from "semver";
+import assert from "assert";
+import path from "path";
+import ts, {
+  type AccessorDeclaration,
+  type ClassElement,
+  type ExpressionWithTypeArguments,
+  type NamedTupleMember,
+  type Node,
+  type SourceFile,
+  type TransformationContext,
+  type Transformer,
+  type TransformerFactory,
+  type TypeChecker,
+  type TypeNode,
+  type TypeReferenceNode,
+} from "typescript";
+import fs from "fs";
+import sh from "shelljs";
 
-/** @typedef {import("typescript").Node} Node */
-/**
- * @param {string} src
- * @param {string} target
- * @param {import("semver").SemVer} targetVersion
- */
-function main(src, target, targetVersion) {
+export function main(src: string, target: string, targetVersion: SemVer) {
   if (!src || !target) {
     console.log("Usage: node index.js test test/ts3.4 [--to=3.4]");
     process.exit(1);
@@ -21,28 +28,34 @@ function main(src, target, targetVersion) {
   // TODO: target path is probably wrong for absolute src (or target?)
   // TODO: Probably will want to alter package.json if discovered in the right place.
   const program = ts.createProgram(
-    sh.find(path.join(src)).filter(f => f.endsWith(".d.ts") && !/node_modules/.test(f)),
-    {}
+    sh.find(path.join(src)).filter((f) => f.endsWith(".d.ts") && !/node_modules/.test(f)),
+    {},
   );
   const checker = program.getTypeChecker(); // just used for setting parent pointers right now
   const files = mapDefined(program.getRootFileNames(), program.getSourceFile);
   const printer = ts.createPrinter({
-    newLine: ts.NewLineKind.CarriageReturnLineFeed
+    newLine: ts.NewLineKind.CarriageReturnLineFeed,
   });
-  for (const t of ts.transform(files, [doTransform.bind(null, checker, targetVersion)]).transformed) {
-    const f = /** @type {import("typescript").SourceFile} */ (t);
-    const targetPath = path.join(target, path.resolve(f.fileName).slice(path.resolve(src).length));
-    sh.mkdir("-p", path.dirname(targetPath));
-    fs.writeFileSync(targetPath, dedupeTripleSlash(printer.printFile(f)));
+
+  //
+
+  const transformerFactory: TransformerFactory<SourceFile> = (context) =>
+    createSourceFileTransformer(checker, targetVersion, context);
+  for (const t of ts.transform(files, [transformerFactory]).transformed) {
+    if (t.kind === ts.SyntaxKind.SourceFile) {
+      const sourceFile = t as SourceFile;
+      const targetPath = path.join(target, path.resolve(sourceFile.fileName).slice(path.resolve(src).length));
+      sh.mkdir("-p", path.dirname(targetPath));
+      fs.writeFileSync(targetPath, dedupeTripleSlash(printer.printFile(sourceFile)));
+    }
   }
 }
-module.exports.main = main;
 
-if (!(/** @type {*} */ (module.parent))) {
+if (!(/** @type {*} */ module.parent)) {
   const src = process.argv[2];
   const target = process.argv[3];
-  const to = process.argv.find(arg => arg.startsWith("--to"));
-  /** @type {*} */ let targetVersion = semver.minVersion("3.4.0");
+  const to = process.argv.find((arg) => arg.startsWith("--to"));
+  let targetVersion: SemVer = semver.minVersion("3.4.0")!;
   if (to) {
     const userInput = semver.coerce(to.split("=")[1]);
     if (userInput) targetVersion = userInput;
@@ -50,23 +63,18 @@ if (!(/** @type {*} */ (module.parent))) {
   main(src, target, targetVersion);
 }
 
-/**
- * @param {import("typescript").TypeChecker} checker
- * @param {import("semver").SemVer} targetVersion
- * @param {import("typescript").TransformationContext} k
- */
-function doTransform(checker, targetVersion, k) {
-  /**
-   * @param {Node} n
-   * @return {import("typescript").VisitResult<Node>}
-   */
-  const transform = function(n) {
+function createSourceFileTransformer(
+  checker: TypeChecker,
+  targetVersion: SemVer,
+  k: TransformationContext,
+): Transformer<SourceFile> {
+  const nodeVisitor: ts.Visitor = (n) => {
     if (semver.lt(targetVersion, "3.7.0")) {
       if (ts.isFunctionTypeNode(n) && n.type && ts.isTypePredicateNode(n.type) && n.type.assertsModifier) {
         return ts.factory.createFunctionTypeNode(
           n.typeParameters,
           n.parameters,
-          ts.factory.createTypeReferenceNode("void", undefined)
+          ts.factory.createTypeReferenceNode("void", undefined),
         );
       }
 
@@ -78,7 +86,7 @@ function doTransform(checker, targetVersion, k) {
           n.typeParameters,
           n.parameters,
           ts.factory.createTypeReferenceNode("void", undefined),
-          n.body
+          n.body,
         );
       }
     }
@@ -86,7 +94,7 @@ function doTransform(checker, targetVersion, k) {
     if (semver.lt(targetVersion, "4.1.0") && n.kind === ts.SyntaxKind.TemplateLiteralType) {
       // TemplateLiteralType added in 4.2
       // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#template-literal-types
-      return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+      return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
     }
 
     if (semver.lt(targetVersion, "3.6.0") && ts.isGetAccessor(n)) {
@@ -104,8 +112,8 @@ function doTransform(checker, targetVersion, k) {
           n.name,
           /*?! token*/ undefined,
           defaultAny(n.type),
-          /*initialiser*/ undefined
-        )
+          /*initialiser*/ undefined,
+        ),
       );
     } else if (semver.lt(targetVersion, "3.6.0") && ts.isSetAccessor(n)) {
       // set x(value: number) => x: number
@@ -120,8 +128,8 @@ function doTransform(checker, targetVersion, k) {
             n.name,
             /*?! token*/ undefined,
             defaultAny(n.parameters[0].type),
-            /*initialiser*/ undefined
-          )
+            /*initialiser*/ undefined,
+          ),
         );
       }
     } else if (semver.lt(targetVersion, "3.6.0") && isTypeReference(n, "IteratorResult")) {
@@ -144,7 +152,7 @@ function doTransform(checker, targetVersion, k) {
         ts.factory.createStringLiteral(parentName + ".#private"),
         /*?! token*/ undefined,
         /*type*/ undefined,
-        /*initialiser*/ undefined
+        /*initialiser*/ undefined,
       );
     } else if (
       semver.lt(targetVersion, "3.8.0") &&
@@ -162,16 +170,16 @@ function doTransform(checker, targetVersion, k) {
         ts.factory.createImportDeclaration(
           n.modifiers,
           ts.factory.createImportClause(false, /*name*/ undefined, ts.factory.createNamespaceImport(tempName)),
-          n.moduleSpecifier
+          n.moduleSpecifier,
         ),
         copyComment(
           [n],
           ts.factory.createExportDeclaration(
             undefined,
             false,
-            ts.factory.createNamedExports([ts.factory.createExportSpecifier(false, tempName, n.exportClause.name)])
-          )
-        )
+            ts.factory.createNamedExports([ts.factory.createExportSpecifier(false, tempName, n.exportClause.name)]),
+          ),
+        ),
       ];
     } else if (semver.lt(targetVersion, "3.8.0") && ts.isExportDeclaration(n) && n.isTypeOnly) {
       return ts.factory.createExportDeclaration(n.modifiers, false, n.exportClause, n.moduleSpecifier);
@@ -185,7 +193,7 @@ function doTransform(checker, targetVersion, k) {
       !n.importClause.isTypeOnly &&
       n.importClause.namedBindings &&
       ts.isNamedImports(n.importClause.namedBindings) &&
-      n.importClause.namedBindings.elements.some(e => e.isTypeOnly)
+      n.importClause.namedBindings.elements.some((e) => e.isTypeOnly)
     ) {
       const elements = n.importClause.namedBindings.elements;
 
@@ -201,11 +209,11 @@ function doTransform(checker, targetVersion, k) {
               false,
               n.importClause.name,
               ts.factory.createNamedImports(
-                elements.map(e => ts.factory.createImportSpecifier(false, e.propertyName, e.name))
-              )
+                elements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+              ),
             ),
-            n.moduleSpecifier
-          )
+            n.moduleSpecifier,
+          ),
         );
       }
 
@@ -230,11 +238,11 @@ function doTransform(checker, targetVersion, k) {
             true,
             n.importClause.name,
             ts.factory.createNamedImports(
-              typeElements.map(e => ts.factory.createImportSpecifier(false, e.propertyName, e.name))
-            )
+              typeElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+            ),
           ),
-          n.moduleSpecifier
-        )
+          n.moduleSpecifier,
+        ),
       );
 
       if (valueElements.length === 0) {
@@ -255,11 +263,11 @@ function doTransform(checker, targetVersion, k) {
               false,
               n.importClause.name,
               ts.factory.createNamedImports(
-                valueElements.map(e => ts.factory.createImportSpecifier(false, e.propertyName, e.name))
-              )
+                valueElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+              ),
             ),
-            n.moduleSpecifier
-          )
+            n.moduleSpecifier,
+          ),
         ];
       }
     } else if (
@@ -269,7 +277,7 @@ function doTransform(checker, targetVersion, k) {
       !n.isTypeOnly &&
       n.exportClause &&
       ts.isNamedExports(n.exportClause) &&
-      n.exportClause.elements.some(e => e.isTypeOnly)
+      n.exportClause.elements.some((e) => e.isTypeOnly)
     ) {
       const elements = n.exportClause.elements;
 
@@ -285,10 +293,10 @@ function doTransform(checker, targetVersion, k) {
             n.modifiers,
             false,
             ts.factory.createNamedExports(
-              elements.map(e => ts.factory.createExportSpecifier(false, e.propertyName, e.name))
+              elements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
             ),
-            n.moduleSpecifier
-          )
+            n.moduleSpecifier,
+          ),
         );
       }
 
@@ -313,10 +321,10 @@ function doTransform(checker, targetVersion, k) {
           n.modifiers,
           true,
           ts.factory.createNamedExports(
-            typeElements.map(e => ts.factory.createExportSpecifier(false, e.propertyName, e.name))
+            typeElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
           ),
-          n.moduleSpecifier
-        )
+          n.moduleSpecifier,
+        ),
       );
 
       if (valueElements.length === 0) {
@@ -340,10 +348,10 @@ function doTransform(checker, targetVersion, k) {
             n.modifiers,
             false,
             ts.factory.createNamedExports(
-              valueElements.map(e => ts.factory.createExportSpecifier(false, e.propertyName, e.name))
+              valueElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
             ),
-            n.moduleSpecifier
-          )
+            n.moduleSpecifier,
+          ),
         ];
       }
     } else if (isTypeReference(n, "Omit")) {
@@ -355,54 +363,52 @@ function doTransform(checker, targetVersion, k) {
           typeArguments[0],
           ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Exclude"), [
             ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, typeArguments[0]),
-            typeArguments[1]
-          ])
+            typeArguments[1],
+          ]),
         ]);
       }
     } else if (semver.lt(targetVersion, "4.0.0") && n.kind === ts.SyntaxKind.NamedTupleMember) {
-      const member = /** @type {import("typescript").NamedTupleMember} */ (n);
+      const member = n as NamedTupleMember;
       return ts.addSyntheticLeadingComment(
         member.dotDotDotToken ? ts.factory.createRestTypeNode(member.type) : member.type,
         ts.SyntaxKind.MultiLineCommentTrivia,
         ts.unescapeLeadingUnderscores(member.name.escapedText),
-        /*hasTrailingNewline*/ false
+        /*hasTrailingNewline*/ false,
       );
     } else if (semver.lt(targetVersion, "4.7.0") && ts.isTypeParameterDeclaration(n)) {
       return ts.factory.createTypeParameterDeclaration(
         n.modifiers?.filter(
-          modifier => modifier.kind !== ts.SyntaxKind.InKeyword && modifier.kind !== ts.SyntaxKind.OutKeyword
+          (modifier) => modifier.kind !== ts.SyntaxKind.InKeyword && modifier.kind !== ts.SyntaxKind.OutKeyword,
         ),
         n.name,
         n.constraint,
-        n.default
+        n.default,
       );
     }
-    return ts.visitEachChild(n, transform, k);
+    return ts.visitEachChild(n, nodeVisitor, k);
   };
-  return transform;
+
+  return (sourceFile: SourceFile): SourceFile => {
+    const result = nodeVisitor(sourceFile);
+    if (!result) return sourceFile;
+    else if (Array.isArray(result)) return result[0] as SourceFile;
+    else return result as SourceFile;
+  };
 }
-/** @param {import("typescript").TypeNode | undefined} t */
-function defaultAny(t) {
+
+function defaultAny(t: TypeNode | undefined) {
   return t || ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
 }
 
-/**
- * @param {import("typescript").AccessorDeclaration} n
- * @param {'get' | 'set'} getset
- */
-function getMatchingAccessor(n, getset) {
+function getMatchingAccessor(n: AccessorDeclaration, getset: "get" | "set"): ClassElement | undefined {
   if (!ts.isClassDeclaration(n.parent)) throw new Error("Bad AST -- accessor parent should be a class declaration.");
   const isOther = getset === "get" ? ts.isSetAccessor : ts.isGetAccessor;
-  return n.parent.members.find(m => isOther(m) && m.name.getText() === n.name.getText());
+  return n.parent.members.find((m) => isOther(m) && m.name.getText() === n.name.getText());
 }
 
-/**
- * @param {Node[]} originals
- * @param {Node} rewrite
- */
-function copyComment(originals, rewrite) {
+function copyComment(originals: Node[], rewrite: Node): Node {
   const file = originals[0].getSourceFile().getFullText();
-  const ranges = flatMap(originals, o => {
+  const ranges = flatMap(originals, (o) => {
     const comments = ts.getLeadingCommentRanges(file, o.getFullStart());
     return comments ? comments : [];
   });
@@ -410,30 +416,23 @@ function copyComment(originals, rewrite) {
 
   let kind = ts.SyntaxKind.SingleLineCommentTrivia;
   let hasTrailingNewline = false;
-  const commentText = flatMap(ranges, r => {
+  const commentText = flatMap(ranges, (r) => {
     if (r.kind === ts.SyntaxKind.MultiLineCommentTrivia) kind = ts.SyntaxKind.MultiLineCommentTrivia;
     hasTrailingNewline = hasTrailingNewline || !!r.hasTrailingNewLine;
     const comment = file.slice(r.pos, r.end);
     const text = comment.startsWith("//") ? comment.slice(2) : comment.slice(3, comment.length - 2);
-    return text.split("\n").map(line => line.trimStart());
+    return text.split("\n").map((line) => line.trimStart());
   }).join("\n");
   return ts.addSyntheticLeadingComment(rewrite, kind, commentText, hasTrailingNewline);
 }
 
-/** @param {string} s */
-function dedupeTripleSlash(s) {
+function dedupeTripleSlash(s: string): string {
   const lines = s.split("\n");
-  const i = lines.findIndex(line => !line.startsWith("/// <reference "));
+  const i = lines.findIndex((line) => !line.startsWith("/// <reference "));
   return [...new Set(lines.slice(0, i)), ...lines.slice(i)].join("\n");
 }
 
-/**
- * @template T,U
- * @param {readonly T[]} l
- * @param {(t: T) => U | false | undefined} f
- * @return {U[]}
- */
-function mapDefined(l, f) {
+function mapDefined<T, U>(l: readonly T[], f: (t: T) => U | false | undefined): U[] {
   const acc = [];
   for (const x of l) {
     const y = f(x);
@@ -442,13 +441,7 @@ function mapDefined(l, f) {
   return acc;
 }
 
-/**
- * @template T,U
- * @param {readonly T[]} l
- * @param {(t: T) => U[]} f
- * @return {U[]}
- */
-function flatMap(l, f) {
+function flatMap<T, U>(l: readonly T[], f: (t: T) => U[]): U[] {
   if (l.flatMap) return l.flatMap(f);
   const acc = [];
   for (const x of l) {
@@ -460,11 +453,13 @@ function flatMap(l, f) {
 
 /**
  * Checks whether a node is a type reference with typeName as a name
- * @param {ts.Node} node AST node
- * @param {string} typeName name of the type
- * @returns {node is ts.TypeReferenceNode | ts.ExpressionWithTypeArguments} true if the node is a type reference with typeName as a name
+ *
+ * @param node AST node
+ * @param typeName name of the type
+ * @returns true if the node is a type reference with
+ *   typeName as a name
  */
-function isTypeReference(node, typeName) {
+function isTypeReference(node: Node, typeName: string): node is TypeReferenceNode | ExpressionWithTypeArguments {
   return (
     (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName) && node.typeName.escapedText === typeName) ||
     (ts.isExpressionWithTypeArguments(node) &&
@@ -475,11 +470,12 @@ function isTypeReference(node, typeName) {
 
 /**
  * Returns whether a symbol is a standard TypeScript library definition
- * @param {ts.Symbol | undefined} symbol a symbol in source file
+ *
+ * @param symbol a symbol in source file
  * @returns whether this symbol is for a standard TypeScript library definition
  */
-function isStdLibSymbol(symbol) {
-  return (
+function isStdLibSymbol(symbol: ts.Symbol | undefined): boolean {
+  return !!(
     symbol &&
     symbol.declarations &&
     symbol.declarations.length &&
