@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "husky",
     "test": "jest",
-    "build": "tsc",
+    "build": "tsc && node scripts/makeExecutable.js",
     "baseline-accept": "cp -r baselines/local/ts* baselines/reference"
   },
   "repository": {
