@@ -1,37 +1,37 @@
 {
-  "name": "downlevel-dts",
-  "version": "0.11.0",
-  "description": "Convert d.ts to be compatible with older typescript compilers",
-  "homepage": "https://github.com/sandersn/downlevel-dts",
-  "main": "dist/index.js",
-  "bin": "dist/index.js",
-  "scripts": {
-    "prepare": "husky",
-    "lint:fix": "prettier . --write",
-    "test": "jest",
-    "validate": "npm run lint:fix && npm run test",
-    "build": "tsc && node scripts/makeExecutable.js",
-    "baseline-accept": "cp -r baselines/local/ts* baselines/reference"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sandersn/downlevel-dts.git"
-  },
-  "author": "Nathan Shively-Sanders",
-  "license": "MIT",
-  "dependencies": {
-    "@types/semver": "^7.3.4",
-    "semver": "^7.3.2",
-    "shelljs": "^0.8.3",
-    "typescript": "^5.7.2"
-  },
-  "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.1",
-    "@types/shelljs": "^0.8.6",
-    "husky": "^9.1.7",
-    "jest": "^29.7.0",
-    "prettier": "^3.4.2",
-    "ts-jest": "^29.2.5"
-  }
+    "name": "downlevel-dts",
+    "version": "0.11.0",
+    "description": "Convert d.ts to be compatible with older typescript compilers",
+    "homepage": "https://github.com/sandersn/downlevel-dts",
+    "main": "dist/index.js",
+    "bin": "dist/index.js",
+    "scripts": {
+        "prepare": "husky",
+        "lint:fix": "prettier . --write",
+        "test": "jest",
+        "validate": "npm run lint:fix && npm run test",
+        "build": "tsc && node scripts/makeExecutable.js",
+        "baseline-accept": "cp -r baselines/local/ts* baselines/reference"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sandersn/downlevel-dts.git"
+    },
+    "author": "Nathan Shively-Sanders",
+    "license": "MIT",
+    "dependencies": {
+        "@types/semver": "^7.3.4",
+        "semver": "^7.3.2",
+        "shelljs": "^0.8.3",
+        "typescript": "^5.7.2"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.14",
+        "@types/node": "^22.10.1",
+        "@types/shelljs": "^0.8.6",
+        "husky": "^9.1.7",
+        "jest": "^29.7.0",
+        "prettier": "^3.4.2",
+        "ts-jest": "^29.2.5"
+    }
 }

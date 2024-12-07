@@ -6,7 +6,7 @@ TypeScript didn't support accessors in .d.ts files until 3.6:
 
 ```ts
 declare class C {
-  get x(): number;
+    get x(): number;
 }
 ```
 
@@ -14,7 +14,7 @@ becomes
 
 ```ts
 declare class C {
-  readonly x: number;
+    readonly x: number;
 }
 ```
 
@@ -57,7 +57,7 @@ can be useful.
 
 ```ts
 declare class C {
-  get x(): number;
+    get x(): number;
 }
 ```
 
@@ -65,7 +65,7 @@ becomes
 
 ```ts
 declare class C {
-  readonly x: number;
+    readonly x: number;
 }
 ```
 
@@ -101,13 +101,13 @@ declare function assert(val: any, msg?: string): void;
 The downlevel emit is quite simple:
 
 ```ts
-import type { T } from "x";
+import type { T } from 'x';
 ```
 
 becomes
 
 ```ts
-import { T } from "x";
+import { T } from 'x';
 ```
 
 #### Semantics
@@ -130,7 +130,7 @@ export { C };
 and the latter allows construction:
 
 ```ts
-import { C } from "x";
+import { C } from 'x';
 var c = new C();
 ```
 
@@ -143,7 +143,7 @@ An import/export declaration with only import/export names that have `type`
 modifiers
 
 ```ts
-import { type A, type B } from "x";
+import { type A, type B } from 'x';
 export { type A, type B };
 ```
 
@@ -151,18 +151,18 @@ becomes:
 
 ```ts
 // TS 3.8+
-import type { A, B } from "x";
+import type { A, B } from 'x';
 export type { A, B };
 
 // TS 3.7 or less
-import { A, B } from "x";
+import { A, B } from 'x';
 export { A, B };
 ```
 
 A mixed import/export declaration
 
 ```ts
-import { A, type B } from "x";
+import { A, type B } from 'x';
 export { A, type B };
 ```
 
@@ -170,13 +170,13 @@ becomes:
 
 ```ts
 // TS 3.8+
-import type { B } from "x";
-import { A } from "x";
+import type { B } from 'x';
+import { A } from 'x';
 export type { B };
 export { A };
 
 // TS 3.7 or less
-import { A, B } from "x";
+import { A, B } from 'x';
 export { A, B };
 ```
 
@@ -202,7 +202,7 @@ properties to compile-time private properties:
 
 ```ts
 declare class C {
-  #private;
+    #private;
 }
 ```
 
@@ -224,8 +224,8 @@ with the private property:
 
 ```ts
 class C {
-  #x = 1;
-  private y = 2;
+    #x = 1;
+    private y = 2;
 }
 ```
 
@@ -233,8 +233,8 @@ emits
 
 ```ts
 declare class C {
-  #private;
-  private y;
+    #private;
+    private y;
 }
 ```
 
@@ -242,8 +242,8 @@ which then downlevels to
 
 ```ts
 declare class C {
-  private "#private";
-  private y;
+    private '#private';
+    private y;
 }
 ```
 
@@ -260,13 +260,13 @@ TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` synt
 statements:
 
 ```ts
-export * as ns from "x";
+export * as ns from 'x';
 ```
 
 becomes
 
 ```ts
-import * as ns_1 from "x";
+import * as ns_1 from 'x';
 export { ns_1 as ns };
 ```
 
@@ -299,8 +299,8 @@ Typescript 4.7 supports variance annotations on type parameter declarations:
 
 ```ts
 interface State<in out T> {
-  get: () => T;
-  set: (value: T) => void;
+    get: () => T;
+    set: (value: T) => void;
 }
 ```
 
@@ -308,8 +308,8 @@ becomes:
 
 ```ts
 interface State<T> {
-  get: () => T;
-  set: (value: T) => void;
+    get: () => T;
+    set: (value: T) => void;
 }
 ```
 
