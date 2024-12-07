@@ -21,7 +21,7 @@
     "@types/semver": "^7.3.4",
     "semver": "^7.3.2",
     "shelljs": "^0.8.3",
-    "typescript": "next"
+    "typescript": "^5.7.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
