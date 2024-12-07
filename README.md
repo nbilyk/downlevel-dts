@@ -101,7 +101,7 @@ declare function assert(val: any, msg?: string): void;
 The downlevel emit is quite simple:
 
 ```ts
-import type { T } from 'x';
+import type { T } from "x";
 ```
 
 becomes
@@ -116,8 +116,7 @@ The downlevel d.ts will be less strict because a class will be
 constructable:
 
 ```ts
-declare class C {
-}
+declare class C {}
 export type { C };
 ```
 
@@ -203,7 +202,7 @@ properties to compile-time private properties:
 
 ```ts
 declare class C {
-  #private
+  #private;
 }
 ```
 
@@ -225,8 +224,8 @@ with the private property:
 
 ```ts
 class C {
-  #x = 1
-  private y = 2
+  #x = 1;
+  private y = 2;
 }
 ```
 
@@ -234,8 +233,8 @@ emits
 
 ```ts
 declare class C {
-  #private
-  private y
+  #private;
+  private y;
 }
 ```
 
@@ -261,7 +260,7 @@ TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` synt
 statements:
 
 ```ts
-export * as ns from 'x';
+export * as ns from "x";
 ```
 
 becomes
@@ -300,8 +299,8 @@ Typescript 4.7 supports variance annotations on type parameter declarations:
 
 ```ts
 interface State<in out T> {
-    get: () => T;
-    set: (value: T) => void;
+  get: () => T;
+  set: (value: T) => void;
 }
 ```
 
