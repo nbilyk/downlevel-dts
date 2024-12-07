@@ -4,6 +4,9 @@ import * as sh from 'shelljs';
 import * as fs from 'fs';
 import * as semver from 'semver';
 
+const OUT_DIR = 'baselines/local';
+const EXPECTED_DIR = 'baselines/reference';
+
 describe('main', () => {
     const tsVersions = [
         '3.4',
@@ -30,15 +33,13 @@ describe('main', () => {
         test(
             'downlevel TS to ' + tsVersion,
             () => {
-                main('test', `baselines/local/ts${tsVersion}`, semver.coerce(tsVersion)!);
+                main('test', `${OUT_DIR}/ts${tsVersion}`, semver.coerce(tsVersion)!);
 
-                expect(fs.readFileSync(`baselines/local/ts${tsVersion}/test.d.ts`, 'utf8')).toEqual(
-                    fs.readFileSync(`baselines/reference/ts${tsVersion}/test.d.ts`, 'utf8'),
+                expect(fs.readFileSync(`${OUT_DIR}/ts${tsVersion}/test.d.ts`, 'utf8')).toEqual(
+                    fs.readFileSync(`${EXPECTED_DIR}/ts${tsVersion}/test.d.ts`, 'utf8'),
                 );
-                expect(
-                    fs.readFileSync(`baselines/local/ts${tsVersion}/src/test.d.ts`, 'utf8'),
-                ).toEqual(
-                    fs.readFileSync(`baselines/reference/ts${tsVersion}/src/test.d.ts`, 'utf8'),
+                expect(fs.readFileSync(`${OUT_DIR}/ts${tsVersion}/src/test.d.ts`, 'utf8')).toEqual(
+                    fs.readFileSync(`${EXPECTED_DIR}/ts${tsVersion}/src/test.d.ts`, 'utf8'),
                 );
             },
             10 * 1000,
