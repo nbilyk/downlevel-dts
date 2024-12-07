@@ -69,6 +69,70 @@ function createSourceFileTransformer(
   k: TransformationContext,
 ): Transformer<SourceFile> {
   const nodeVisitor: ts.Visitor = (n) => {
+    if (semver.lt(targetVersion, "3.5.0")) {
+      if (isTypeReference(n, "Omit")) {
+        const symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(n) ? n.typeName : n.expression);
+        const typeArguments = n.typeArguments;
+
+        if (isStdLibSymbol(symbol) && typeArguments) {
+          return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Pick"), [
+            typeArguments[0],
+            ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Exclude"), [
+              ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, typeArguments[0]),
+              typeArguments[1],
+            ]),
+          ]);
+        }
+      }
+    }
+
+    if (semver.lt(targetVersion, "3.6.0")) {
+      if (ts.isGetAccessor(n)) {
+        // get x(): number => x: number
+        let flags = ts.getCombinedModifierFlags(n);
+        const other = getMatchingAccessor(n, "get");
+        if (!other) {
+          flags |= ts.ModifierFlags.Readonly;
+        }
+        const modifiers = ts.factory.createModifiersFromModifierFlags(flags);
+        return copyComment(
+          other ? [n, other] : [n],
+          ts.factory.createPropertyDeclaration(
+            modifiers,
+            n.name,
+            /*?! token*/ undefined,
+            defaultAny(n.type),
+            /*initialiser*/ undefined,
+          ),
+        );
+      } else if (ts.isSetAccessor(n)) {
+        // set x(value: number) => x: number
+        if (getMatchingAccessor(n, "set")) {
+          return undefined;
+        } else {
+          assert(n.parameters && n.parameters.length);
+          return copyComment(
+            [n],
+            ts.factory.createPropertyDeclaration(
+              n.modifiers,
+              n.name,
+              /*?! token*/ undefined,
+              defaultAny(n.parameters[0].type),
+              /*initialiser*/ undefined,
+            ),
+          );
+        }
+      }
+
+      if (isTypeReference(n, "IteratorResult")) {
+        const symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(n) ? n.typeName : n.expression);
+        const typeArguments = n.typeArguments;
+        if (isStdLibSymbol(symbol) && typeArguments) {
+          return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("IteratorResult"), [typeArguments[0]]);
+        }
+      }
+    }
+
     if (semver.lt(targetVersion, "3.7.0")) {
       if (ts.isFunctionTypeNode(n) && n.type && ts.isTypePredicateNode(n.type) && n.type.assertsModifier) {
         return ts.factory.createFunctionTypeNode(
@@ -91,300 +155,257 @@ function createSourceFileTransformer(
       }
     }
 
-    if (semver.lt(targetVersion, "4.1.0") && n.kind === ts.SyntaxKind.TemplateLiteralType) {
-      // TemplateLiteralType added in 4.2
-      // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#template-literal-types
-      return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
-    }
-
-    if (semver.lt(targetVersion, "3.6.0") && ts.isGetAccessor(n)) {
-      // get x(): number => x: number
-      let flags = ts.getCombinedModifierFlags(n);
-      const other = getMatchingAccessor(n, "get");
-      if (!other) {
-        flags |= ts.ModifierFlags.Readonly;
-      }
-      const modifiers = ts.factory.createModifiersFromModifierFlags(flags);
-      return copyComment(
-        other ? [n, other] : [n],
-        ts.factory.createPropertyDeclaration(
+    if (semver.lt(targetVersion, "3.8.0")) {
+      if (ts.isPropertyDeclaration(n) && ts.isPrivateIdentifier(n.name) && n.name.escapedText === "#private") {
+        // #private => private "#private"
+        const modifiers = ts.factory.createModifiersFromModifierFlags(ts.ModifierFlags.Private);
+        const parentName = n.parent.name ? n.parent.name.escapedText : "(anonymous)";
+        return ts.factory.createPropertyDeclaration(
           modifiers,
-          n.name,
+          ts.factory.createStringLiteral(parentName + ".#private"),
           /*?! token*/ undefined,
-          defaultAny(n.type),
+          /*type*/ undefined,
           /*initialiser*/ undefined,
-        ),
-      );
-    } else if (semver.lt(targetVersion, "3.6.0") && ts.isSetAccessor(n)) {
-      // set x(value: number) => x: number
-      if (getMatchingAccessor(n, "set")) {
-        return undefined;
-      } else {
-        assert(n.parameters && n.parameters.length);
-        return copyComment(
-          [n],
-          ts.factory.createPropertyDeclaration(
-            n.modifiers,
-            n.name,
-            /*?! token*/ undefined,
-            defaultAny(n.parameters[0].type),
-            /*initialiser*/ undefined,
-          ),
         );
-      }
-    } else if (semver.lt(targetVersion, "3.6.0") && isTypeReference(n, "IteratorResult")) {
-      const symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(n) ? n.typeName : n.expression);
-      const typeArguments = n.typeArguments;
-      if (isStdLibSymbol(symbol) && typeArguments) {
-        return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("IteratorResult"), [typeArguments[0]]);
-      }
-    } else if (
-      semver.lt(targetVersion, "3.8.0") &&
-      ts.isPropertyDeclaration(n) &&
-      ts.isPrivateIdentifier(n.name) &&
-      n.name.escapedText === "#private"
-    ) {
-      // #private => private "#private"
-      const modifiers = ts.factory.createModifiersFromModifierFlags(ts.ModifierFlags.Private);
-      const parentName = n.parent.name ? n.parent.name.escapedText : "(anonymous)";
-      return ts.factory.createPropertyDeclaration(
-        modifiers,
-        ts.factory.createStringLiteral(parentName + ".#private"),
-        /*?! token*/ undefined,
-        /*type*/ undefined,
-        /*initialiser*/ undefined,
-      );
-    } else if (
-      semver.lt(targetVersion, "3.8.0") &&
-      ts.isExportDeclaration(n) &&
-      n.exportClause &&
-      n.moduleSpecifier &&
-      ts.isNamespaceExport(n.exportClause)
-    ) {
-      // export * as ns from 'x'
-      //  =>
-      // import * as ns_1 from 'x'
-      // export { ns_1 as ns }
-      const tempName = ts.factory.createUniqueName(n.exportClause.name.getText());
-      return [
-        ts.factory.createImportDeclaration(
-          n.modifiers,
-          ts.factory.createImportClause(false, /*name*/ undefined, ts.factory.createNamespaceImport(tempName)),
-          n.moduleSpecifier,
-        ),
-        copyComment(
-          [n],
-          ts.factory.createExportDeclaration(
-            undefined,
-            false,
-            ts.factory.createNamedExports([ts.factory.createExportSpecifier(false, tempName, n.exportClause.name)]),
-          ),
-        ),
-      ];
-    } else if (semver.lt(targetVersion, "3.8.0") && ts.isExportDeclaration(n) && n.isTypeOnly) {
-      return ts.factory.createExportDeclaration(n.modifiers, false, n.exportClause, n.moduleSpecifier);
-    } else if (semver.lt(targetVersion, "3.8.0") && ts.isImportClause(n) && n.isTypeOnly) {
-      return ts.factory.createImportClause(false, n.name, n.namedBindings);
-    } else if (
-      semver.lt(targetVersion, "4.5.0") &&
-      ts.isImportDeclaration(n) &&
-      !n.modifiers &&
-      n.importClause &&
-      !n.importClause.isTypeOnly &&
-      n.importClause.namedBindings &&
-      ts.isNamedImports(n.importClause.namedBindings) &&
-      n.importClause.namedBindings.elements.some((e) => e.isTypeOnly)
-    ) {
-      const elements = n.importClause.namedBindings.elements;
-
-      if (semver.lt(targetVersion, "3.8.0")) {
-        // import { A, type B } from 'x'
-        // =>
-        // import { A, B } from 'x'
-        return copyComment(
-          [n],
-          ts.factory.createImportDeclaration(
-            n.modifiers,
-            ts.factory.createImportClause(
-              false,
-              n.importClause.name,
-              ts.factory.createNamedImports(
-                elements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
-              ),
-            ),
-            n.moduleSpecifier,
-          ),
-        );
-      }
-
-      const typeElements = [];
-      const valueElements = [];
-      for (const e of elements) {
-        if (e.isTypeOnly) {
-          typeElements.push(e);
-        } else {
-          valueElements.push(e);
-        }
-      }
-
-      // import { type A, type B, ... } from 'x'
-      // =>
-      // import type { A, B } from 'x'
-      const typeOnlyImportDeclaration = copyComment(
-        [n],
-        ts.factory.createImportDeclaration(
-          n.modifiers,
-          ts.factory.createImportClause(
-            true,
-            n.importClause.name,
-            ts.factory.createNamedImports(
-              typeElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
-            ),
-          ),
-          n.moduleSpecifier,
-        ),
-      );
-
-      if (valueElements.length === 0) {
-        // import { type A, type B } from 'x'
-        // =>
-        // import type { A, B } from 'x'
-        return typeOnlyImportDeclaration;
-      } else {
-        // import { A, type B } from 'x'
-        // =>
-        // import type { B } from 'x'
-        // import { A } from 'x'
+      } else if (
+        ts.isExportDeclaration(n) &&
+        n.exportClause &&
+        n.moduleSpecifier &&
+        ts.isNamespaceExport(n.exportClause)
+      ) {
+        // export * as ns from 'x'
+        //  =>
+        // import * as ns_1 from 'x'
+        // export { ns_1 as ns }
+        const tempName = ts.factory.createUniqueName(n.exportClause.name.getText());
         return [
-          typeOnlyImportDeclaration,
           ts.factory.createImportDeclaration(
             n.modifiers,
-            ts.factory.createImportClause(
-              false,
-              n.importClause.name,
-              ts.factory.createNamedImports(
-                valueElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
-              ),
-            ),
+            ts.factory.createImportClause(false, /*name*/ undefined, ts.factory.createNamespaceImport(tempName)),
             n.moduleSpecifier,
+          ),
+          copyComment(
+            [n],
+            ts.factory.createExportDeclaration(
+              undefined,
+              false,
+              ts.factory.createNamedExports([ts.factory.createExportSpecifier(false, tempName, n.exportClause.name)]),
+            ),
           ),
         ];
+      } else if (ts.isExportDeclaration(n) && n.isTypeOnly) {
+        return ts.factory.createExportDeclaration(n.modifiers, false, n.exportClause, n.moduleSpecifier);
+      } else if (ts.isImportClause(n) && n.isTypeOnly) {
+        return ts.factory.createImportClause(false, n.name, n.namedBindings);
       }
-    } else if (
-      semver.lt(targetVersion, "4.5.0") &&
-      ts.isExportDeclaration(n) &&
-      !n.modifiers &&
-      !n.isTypeOnly &&
-      n.exportClause &&
-      ts.isNamedExports(n.exportClause) &&
-      n.exportClause.elements.some((e) => e.isTypeOnly)
-    ) {
-      const elements = n.exportClause.elements;
+    }
 
-      if (semver.lt(targetVersion, "3.8.0")) {
-        // export { A, type B }
-        // export { C, type D } from 'x'
+    if (semver.lt(targetVersion, "4.0.0")) {
+      if (n.kind === ts.SyntaxKind.NamedTupleMember) {
+        const member = n as NamedTupleMember;
+        return ts.addSyntheticLeadingComment(
+          member.dotDotDotToken ? ts.factory.createRestTypeNode(member.type) : member.type,
+          ts.SyntaxKind.MultiLineCommentTrivia,
+          ts.unescapeLeadingUnderscores(member.name.escapedText),
+          /*hasTrailingNewline*/ false,
+        );
+      }
+    }
+
+    if (semver.lt(targetVersion, "4.1.0")) {
+      if (n.kind === ts.SyntaxKind.TemplateLiteralType) {
+        // TemplateLiteralType added in 4.2
+        // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#template-literal-types
+        return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
+      }
+    }
+
+    if (semver.lt(targetVersion, "4.5.0")) {
+      if (
+        ts.isImportDeclaration(n) &&
+        !n.modifiers &&
+        n.importClause &&
+        !n.importClause.isTypeOnly &&
+        n.importClause.namedBindings &&
+        ts.isNamedImports(n.importClause.namedBindings) &&
+        n.importClause.namedBindings.elements.some((e) => e.isTypeOnly)
+      ) {
+        const elements = n.importClause.namedBindings.elements;
+
+        if (semver.lt(targetVersion, "3.8.0")) {
+          // import { A, type B } from 'x'
+          // =>
+          // import { A, B } from 'x'
+          return copyComment(
+            [n],
+            ts.factory.createImportDeclaration(
+              n.modifiers,
+              ts.factory.createImportClause(
+                false,
+                n.importClause.name,
+                ts.factory.createNamedImports(
+                  elements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+                ),
+              ),
+              n.moduleSpecifier,
+            ),
+          );
+        }
+
+        const typeElements = [];
+        const valueElements = [];
+        for (const e of elements) {
+          if (e.isTypeOnly) {
+            typeElements.push(e);
+          } else {
+            valueElements.push(e);
+          }
+        }
+
+        // import { type A, type B, ... } from 'x'
         // =>
-        // export { A, B }
-        // export { C, D } from 'x'
-        return copyComment(
+        // import type { A, B } from 'x'
+        const typeOnlyImportDeclaration = copyComment(
           [n],
-          ts.factory.createExportDeclaration(
+          ts.factory.createImportDeclaration(
             n.modifiers,
-            false,
-            ts.factory.createNamedExports(
-              elements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
+            ts.factory.createImportClause(
+              true,
+              n.importClause.name,
+              ts.factory.createNamedImports(
+                typeElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+              ),
             ),
             n.moduleSpecifier,
           ),
         );
-      }
 
-      const typeElements = [];
-      const valueElements = [];
-      for (const e of elements) {
-        if (e.isTypeOnly) {
-          typeElements.push(e);
+        if (valueElements.length === 0) {
+          // import { type A, type B } from 'x'
+          // =>
+          // import type { A, B } from 'x'
+          return typeOnlyImportDeclaration;
         } else {
-          valueElements.push(e);
+          // import { A, type B } from 'x'
+          // =>
+          // import type { B } from 'x'
+          // import { A } from 'x'
+          return [
+            typeOnlyImportDeclaration,
+            ts.factory.createImportDeclaration(
+              n.modifiers,
+              ts.factory.createImportClause(
+                false,
+                n.importClause.name,
+                ts.factory.createNamedImports(
+                  valueElements.map((e) => ts.factory.createImportSpecifier(false, e.propertyName, e.name)),
+                ),
+              ),
+              n.moduleSpecifier,
+            ),
+          ];
         }
       }
 
-      // export { type A, type B, ... }
-      // export { type C, type D, ... } from 'x'
-      // =>
-      // export type { A, B }
-      // export type { C, D } from 'x'
-      const typeOnlyExportDeclaration = copyComment(
-        [n],
-        ts.factory.createExportDeclaration(
-          n.modifiers,
-          true,
-          ts.factory.createNamedExports(
-            typeElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
-          ),
-          n.moduleSpecifier,
-        ),
-      );
+      if (
+        ts.isExportDeclaration(n) &&
+        !n.modifiers &&
+        !n.isTypeOnly &&
+        n.exportClause &&
+        ts.isNamedExports(n.exportClause) &&
+        n.exportClause.elements.some((e) => e.isTypeOnly)
+      ) {
+        const elements = n.exportClause.elements;
 
-      if (valueElements.length === 0) {
-        // export { type A, type B }
-        // export { type C, type D } from 'x'
+        if (semver.lt(targetVersion, "3.8.0")) {
+          // export { A, type B }
+          // export { C, type D } from 'x'
+          // =>
+          // export { A, B }
+          // export { C, D } from 'x'
+          return copyComment(
+            [n],
+            ts.factory.createExportDeclaration(
+              n.modifiers,
+              false,
+              ts.factory.createNamedExports(
+                elements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
+              ),
+              n.moduleSpecifier,
+            ),
+          );
+        }
+
+        const typeElements = [];
+        const valueElements = [];
+        for (const e of elements) {
+          if (e.isTypeOnly) {
+            typeElements.push(e);
+          } else {
+            valueElements.push(e);
+          }
+        }
+
+        // export { type A, type B, ... }
+        // export { type C, type D, ... } from 'x'
         // =>
         // export type { A, B }
         // export type { C, D } from 'x'
-        return typeOnlyExportDeclaration;
-      } else {
-        // export { A, type B }
-        // export { C, type D } from 'x'
-        // =>
-        // export type { B }
-        // export { A }
-        // export type { C } from 'x'
-        // export { D } from 'x'
-        return [
-          typeOnlyExportDeclaration,
+        const typeOnlyExportDeclaration = copyComment(
+          [n],
           ts.factory.createExportDeclaration(
             n.modifiers,
-            false,
+            true,
             ts.factory.createNamedExports(
-              valueElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
+              typeElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
             ),
             n.moduleSpecifier,
           ),
-        ];
-      }
-    } else if (isTypeReference(n, "Omit")) {
-      const symbol = checker.getSymbolAtLocation(ts.isTypeReferenceNode(n) ? n.typeName : n.expression);
-      const typeArguments = n.typeArguments;
+        );
 
-      if (semver.lt(targetVersion, "3.5.0") && isStdLibSymbol(symbol) && typeArguments) {
-        return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Pick"), [
-          typeArguments[0],
-          ts.factory.createTypeReferenceNode(ts.factory.createIdentifier("Exclude"), [
-            ts.factory.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, typeArguments[0]),
-            typeArguments[1],
-          ]),
-        ]);
+        if (valueElements.length === 0) {
+          // export { type A, type B }
+          // export { type C, type D } from 'x'
+          // =>
+          // export type { A, B }
+          // export type { C, D } from 'x'
+          return typeOnlyExportDeclaration;
+        } else {
+          // export { A, type B }
+          // export { C, type D } from 'x'
+          // =>
+          // export type { B }
+          // export { A }
+          // export type { C } from 'x'
+          // export { D } from 'x'
+          return [
+            typeOnlyExportDeclaration,
+            ts.factory.createExportDeclaration(
+              n.modifiers,
+              false,
+              ts.factory.createNamedExports(
+                valueElements.map((e) => ts.factory.createExportSpecifier(false, e.propertyName, e.name)),
+              ),
+              n.moduleSpecifier,
+            ),
+          ];
+        }
       }
-    } else if (semver.lt(targetVersion, "4.0.0") && n.kind === ts.SyntaxKind.NamedTupleMember) {
-      const member = n as NamedTupleMember;
-      return ts.addSyntheticLeadingComment(
-        member.dotDotDotToken ? ts.factory.createRestTypeNode(member.type) : member.type,
-        ts.SyntaxKind.MultiLineCommentTrivia,
-        ts.unescapeLeadingUnderscores(member.name.escapedText),
-        /*hasTrailingNewline*/ false,
-      );
-    } else if (semver.lt(targetVersion, "4.7.0") && ts.isTypeParameterDeclaration(n)) {
-      return ts.factory.createTypeParameterDeclaration(
-        n.modifiers?.filter(
-          (modifier) => modifier.kind !== ts.SyntaxKind.InKeyword && modifier.kind !== ts.SyntaxKind.OutKeyword,
-        ),
-        n.name,
-        n.constraint,
-        n.default,
-      );
     }
+
+    if (semver.lt(targetVersion, "4.7.0")) {
+      if (ts.isTypeParameterDeclaration(n)) {
+        return ts.factory.createTypeParameterDeclaration(
+          n.modifiers?.filter(
+            (modifier) => modifier.kind !== ts.SyntaxKind.InKeyword && modifier.kind !== ts.SyntaxKind.OutKeyword,
+          ),
+          n.name,
+          n.constraint,
+          n.default,
+        );
+      }
+    }
+
     return ts.visitEachChild(n, nodeVisitor, k);
   };
 
