@@ -74,3 +74,21 @@ export declare const foo: {
 export type IR = IteratorResult<number, string>;
 /** Template Literal - supported since 4.1 < should be StringKeyword */
 export type TTemplateLiteral = `${string}abc${string}`;
+interface InterfaceWithAccessors {
+    get foo(): number;
+    set foo(value: number);
+    get bar(): number;
+    set baz(value: number);
+}
+type TypeLiteralWithAccessors = {
+    get foo(): number;
+    set foo(value: number);
+    get bar(): number;
+    set baz(value: number);
+};
+export declare const objectLiteralWithAccessors: {
+    get foo(): number;
+    set foo(value: number);
+    get bar(): number;
+    set baz(value: number);
+};

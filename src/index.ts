@@ -8,11 +8,15 @@ import ts, {
     type ExpressionWithTypeArguments,
     type NamedTupleMember,
     type Node,
+    type NodeArray,
+    type ObjectLiteralElementLike,
     type SourceFile,
+    SyntaxKind,
     type TransformationContext,
     type Transformer,
     type TransformerFactory,
     type TypeChecker,
+    type TypeElement,
     type TypeNode,
     type TypeReferenceNode,
 } from 'typescript';
@@ -95,42 +99,7 @@ function createSourceFileTransformer(
         }
 
         if (semver.lt(targetVersion, '3.6.0')) {
-            if (ts.isGetAccessor(n)) {
-                // get x(): number => x: number
-                let flags = ts.getCombinedModifierFlags(n);
-                const other = getMatchingAccessor(n, 'get');
-                if (!other) {
-                    flags |= ts.ModifierFlags.Readonly;
-                }
-                const modifiers = ts.factory.createModifiersFromModifierFlags(flags);
-                return copyComment(
-                    other ? [n, other] : [n],
-                    ts.factory.createPropertyDeclaration(
-                        modifiers,
-                        n.name,
-                        /*?! token*/ undefined,
-                        defaultAny(n.type),
-                        /*initialiser*/ undefined,
-                    ),
-                );
-            } else if (ts.isSetAccessor(n)) {
-                // set x(value: number) => x: number
-                if (getMatchingAccessor(n, 'set')) {
-                    return undefined;
-                } else {
-                    assert(n.parameters && n.parameters.length);
-                    return copyComment(
-                        [n],
-                        ts.factory.createPropertyDeclaration(
-                            n.modifiers,
-                            n.name,
-                            /*?! token*/ undefined,
-                            defaultAny(n.parameters[0].type),
-                            /*initialiser*/ undefined,
-                        ),
-                    );
-                }
-            }
+            if (ts.isAccessor(n)) return convertAccessorToProperty(n);
 
             if (isTypeReference(n, 'IteratorResult')) {
                 const symbol = checker.getSymbolAtLocation(
@@ -217,7 +186,7 @@ function createSourceFileTransformer(
                         ),
                         n.moduleSpecifier,
                     ),
-                    copyComment(
+                    copyComments(
                         [n],
                         ts.factory.createExportDeclaration(
                             undefined,
@@ -266,6 +235,17 @@ function createSourceFileTransformer(
             }
         }
 
+        if (semver.lt(targetVersion, '4.3.2')) {
+            if (
+                ts.isAccessor(n) &&
+                (ts.isInterfaceDeclaration(n.parent) ||
+                    ts.isObjectLiteralElement(n.parent) ||
+                    ts.isTypeLiteralNode(n.parent))
+            ) {
+                return convertAccessorToProperty(n);
+            }
+        }
+
         if (semver.lt(targetVersion, '4.5.0')) {
             if (
                 ts.isImportDeclaration(n) &&
@@ -282,7 +262,7 @@ function createSourceFileTransformer(
                     // import { A, type B } from 'x'
                     // =>
                     // import { A, B } from 'x'
-                    return copyComment(
+                    return copyComments(
                         [n],
                         ts.factory.createImportDeclaration(
                             n.modifiers,
@@ -317,7 +297,7 @@ function createSourceFileTransformer(
                 // import { type A, type B, ... } from 'x'
                 // =>
                 // import type { A, B } from 'x'
-                const typeOnlyImportDeclaration = copyComment(
+                const typeOnlyImportDeclaration = copyComments(
                     [n],
                     ts.factory.createImportDeclaration(
                         n.modifiers,
@@ -383,7 +363,7 @@ function createSourceFileTransformer(
                     // =>
                     // export { A, B }
                     // export { C, D } from 'x'
-                    return copyComment(
+                    return copyComments(
                         [n],
                         ts.factory.createExportDeclaration(
                             n.modifiers,
@@ -413,7 +393,7 @@ function createSourceFileTransformer(
                 // =>
                 // export type { A, B }
                 // export type { C, D } from 'x'
-                const typeOnlyExportDeclaration = copyComment(
+                const typeOnlyExportDeclaration = copyComments(
                     [n],
                     ts.factory.createExportDeclaration(
                         n.modifiers,
@@ -486,20 +466,37 @@ function createSourceFileTransformer(
 }
 
 function defaultAny(t: TypeNode | undefined) {
-    return t || ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+    return t ?? ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
 }
 
-function getMatchingAccessor(
-    n: AccessorDeclaration,
-    getset: 'get' | 'set',
-): ClassElement | undefined {
-    if (!ts.isClassDeclaration(n.parent))
-        throw new Error('Bad AST -- accessor parent should be a class declaration.');
-    const isOther = getset === 'get' ? ts.isSetAccessor : ts.isGetAccessor;
-    return n.parent.members.find((m) => isOther(m) && m.name.getText() === n.name.getText());
+function getMatchingAccessor(n: AccessorDeclaration): AccessorDeclaration | undefined {
+    const otherKind =
+        n.kind === SyntaxKind.SetAccessor ? SyntaxKind.GetAccessor : SyntaxKind.SetAccessor;
+    const name = n.name.getText();
+    const parent = n.parent;
+    let members: NodeArray<ClassElement | TypeElement | ObjectLiteralElementLike>;
+    if (
+        ts.isClassDeclaration(parent) ||
+        ts.isInterfaceDeclaration(parent) ||
+        ts.isTypeLiteralNode(parent)
+    ) {
+        members = parent.members;
+    } else if (ts.isObjectLiteralExpression(parent)) {
+        members = parent.properties;
+    } else {
+        return undefined;
+    }
+    // Search sibling nodes for the matching accessor.
+    for (const child of members) {
+        if (child.kind === otherKind) {
+            const accessor = child as AccessorDeclaration;
+            if (accessor.name.getText() === name) return accessor;
+        }
+    }
+    return undefined;
 }
 
-function copyComment(originals: Node[], rewrite: Node): Node {
+function copyComments(originals: Node[], rewrite: Node): Node {
     const file = originals[0].getSourceFile().getFullText();
     const ranges = flatMap(originals, (o) => {
         const comments = ts.getLeadingCommentRanges(file, o.getFullStart());
@@ -581,5 +578,37 @@ function isStdLibSymbol(symbol: ts.Symbol | undefined): boolean {
         symbol.declarations &&
         symbol.declarations.length &&
         symbol.declarations[0].getSourceFile().fileName.includes('node_modules/typescript/lib/lib')
+    );
+}
+
+/**
+ * Converts accessors to properties. Works for classes, interfaces, type literals, and
+ * object literals.
+ *
+ * @param n
+ */
+function convertAccessorToProperty(n: AccessorDeclaration): Node | undefined {
+    const other = getMatchingAccessor(n);
+
+    if (ts.isSetAccessor(n) && other) {
+        // A setter that has a getter will be combined.
+        return undefined;
+    }
+
+    let flags = ts.getCombinedModifierFlags(n);
+    if (ts.isGetAccessor(n) && !other) {
+        flags |= ts.ModifierFlags.Readonly;
+    }
+    const modifiers = ts.factory.createModifiersFromModifierFlags(flags);
+    return copyComments(
+        other ? [n, other] : [n],
+        ts.factory.createPropertyDeclaration(
+            modifiers,
+            n.name,
+            /*?! token*/ undefined,
+            // A setter without a getter should use the first parameter as a type
+            defaultAny(ts.isSetAccessor(n) ? n.parameters[0].type : n.type),
+            /*initialiser*/ undefined,
+        ),
     );
 }
