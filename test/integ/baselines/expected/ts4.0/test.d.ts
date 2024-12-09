@@ -59,7 +59,8 @@ type J = [
     bar: number,
     ...arr: boolean[]
 ];
-export * as default from "./subdir/test";
+import * as default_1 from "./subdir/test";
+export { default_1 as default };
 export declare type Asserts<T> = (val: unknown) => asserts val is T;
 // Covariant on T
 export type Getter<T> = () => T;

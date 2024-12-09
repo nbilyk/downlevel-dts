@@ -4,8 +4,11 @@ import path from 'path';
 import ts, {
     type AccessorDeclaration,
     type ClassElement,
+    type Expression,
     type ExpressionWithTypeArguments,
+    type NamedExportBindings,
     type NamedTupleMember,
+    type NamespaceExport,
     type Node,
     type NodeArray,
     type ObjectLiteralElementLike,
@@ -74,6 +77,60 @@ if (require.main === module) {
         if (userInput) targetVersion = userInput;
     }
     downlevelDts(src, target, targetVersion);
+}
+
+type NamespaceReexport = ts.ExportDeclaration & {
+    readonly exportClause: NamespaceExport;
+    readonly moduleSpecifier: Expression;
+};
+
+/**
+ * Returns true if the node is a namespace re-export, e.g.
+ * export * as ns from 'x'
+ */
+function isNamespaceReexport(n: Node): n is NamespaceReexport {
+    return (
+        ts.isExportDeclaration(n) &&
+        n.exportClause != null &&
+        n.moduleSpecifier != null &&
+        ts.isNamespaceExport(n.exportClause)
+    );
+}
+
+/**
+ * Converts a namespace reexport to an import followed by an export.
+ * E.g.
+ * export * as ns from 'x'
+ * =>
+ * ```
+ * import * as ns_1 from 'x'
+ * export { ns_1 as ns }
+ * ```
+ * @param n
+ */
+function convertNamespaceReexport(n: NamespaceReexport) {
+    const tempName = ts.factory.createUniqueName(n.exportClause.name.getText());
+    return [
+        ts.factory.createImportDeclaration(
+            n.modifiers,
+            ts.factory.createImportClause(
+                false,
+                /*name*/ undefined,
+                ts.factory.createNamespaceImport(tempName),
+            ),
+            n.moduleSpecifier,
+        ),
+        copyComments(
+            [n],
+            ts.factory.createExportDeclaration(
+                undefined,
+                false,
+                ts.factory.createNamedExports([
+                    ts.factory.createExportSpecifier(false, tempName, n.exportClause.name),
+                ]),
+            ),
+        ),
+    ];
 }
 
 function createSourceFileTransformer(
@@ -171,43 +228,11 @@ function createSourceFileTransformer(
                     /*type*/ undefined,
                     /*initialiser*/ undefined,
                 );
-            } else if (
-                ts.isExportDeclaration(n) &&
-                n.exportClause &&
-                n.moduleSpecifier &&
-                ts.isNamespaceExport(n.exportClause)
-            ) {
-                // export * as ns from 'x'
-                //  =>
-                // import * as ns_1 from 'x'
-                // export { ns_1 as ns }
-                const tempName = ts.factory.createUniqueName(n.exportClause.name.getText());
-                return [
-                    ts.factory.createImportDeclaration(
-                        n.modifiers,
-                        ts.factory.createImportClause(
-                            false,
-                            /*name*/ undefined,
-                            ts.factory.createNamespaceImport(tempName),
-                        ),
-                        n.moduleSpecifier,
-                    ),
-                    copyComments(
-                        [n],
-                        ts.factory.createExportDeclaration(
-                            undefined,
-                            false,
-                            ts.factory.createNamedExports([
-                                ts.factory.createExportSpecifier(
-                                    false,
-                                    tempName,
-                                    n.exportClause.name,
-                                ),
-                            ]),
-                        ),
-                    ),
-                ];
-            } else if (ts.isExportDeclaration(n) && n.isTypeOnly) {
+            }
+            if (isNamespaceReexport(n)) {
+                return convertNamespaceReexport(n);
+            }
+            if (ts.isExportDeclaration(n) && n.isTypeOnly) {
                 return ts.factory.createExportDeclaration(
                     n.modifiers,
                     false,
@@ -238,6 +263,9 @@ function createSourceFileTransformer(
                 // TemplateLiteralType added in 4.2
                 // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#template-literal-types
                 return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
+            }
+            if (isNamespaceReexport(n) && n.exportClause.name.getText() === 'default') {
+                return convertNamespaceReexport(n);
             }
         }
 
