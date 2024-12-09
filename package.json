@@ -10,7 +10,7 @@
         "lint:fix": "prettier . --write",
         "test": "jest",
         "validate": "npm run lint:fix && npm run test",
-        "build": "tsc && node scripts/makeExecutable.js",
+        "build": "tsc --project src/tsconfig.json && node scripts/makeExecutable.js",
         "baseline-accept": "cp -r test/integ/baselines/actual/ts* test/integ/baselines/expected",
         "test:compiler": "npm run build && npm run test && ./scripts/testAllVersions.sh"
     },
