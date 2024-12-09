@@ -1,7 +1,6 @@
-import { main } from '@src/index';
+import { downlevelDts } from '../../src';
 
 import * as fs from 'fs';
-import * as semver from 'semver';
 import { globSync } from 'glob';
 import path from 'path';
 
@@ -26,7 +25,7 @@ const VERSIONS = [
     '4.7',
 ] as const;
 
-describe('main', () => {
+describe('downlevelDts', () => {
     beforeAll(() => {
         fs.rmSync(OUT_DIR_BASE, { recursive: true, force: true })
     }, /* timeout */ 10 * 1000);
@@ -38,7 +37,7 @@ describe('main', () => {
                 const outDir = `${OUT_DIR_BASE}/ts${tsVersion}`;
                 const expectedDir = `${EXPECTED_DIR_BASE}/ts${tsVersion}`;
 
-                main(SRC_DIR, outDir, semver.coerce(tsVersion)!);
+                downlevelDts(SRC_DIR, outDir, tsVersion);
 
                 for (const expectedFile of globSync(
                     `${EXPECTED_DIR_BASE}/ts${tsVersion}/**/*.d.ts`,

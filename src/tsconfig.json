@@ -1,11 +1,12 @@
 {
     "compilerOptions": {
         "strict": true,
-        "noEmit": true,
+        "noEmit": false,
         "target": "esnext",
         "module": "commonjs",
         "esModuleInterop": true,
-        "resolveJsonModule": true
+        "declaration": true,
+        "outDir": "../dist"
     },
-    "include": ["jest.config.ts"]
+    "include": ["**/*"]
 }

@@ -22,9 +22,17 @@ import ts, {
 import fs from 'fs';
 import { globSync } from 'glob';
 
-export function main(src: string, target: string, targetVersion: SemVer) {
+export function downlevelDts(src: string, target: string, targetVersionStr = '3.4') {
     if (!src || !target) {
         console.log('Usage: node index.js test test/ts3.4 [--to=3.4]');
+        process.exit(1);
+    }
+    const targetVersion = semver.coerce(targetVersionStr);
+    if (!targetVersion) {
+        console.error('invalid target version:', targetVersionStr);
+        process.exit(1);
+    } else if (semver.lt(targetVersion, '3.4.0')) {
+        console.error('minimum supported target version is 3.4');
         process.exit(1);
     }
 
@@ -56,16 +64,16 @@ export function main(src: string, target: string, targetVersion: SemVer) {
     }
 }
 
-if (!(/** @type {*} */ module.parent)) {
+if (require.main === module) {
     const src = process.argv[2];
     const target = process.argv[3];
     const to = process.argv.find((arg) => arg.startsWith('--to'));
-    let targetVersion: SemVer = semver.minVersion('3.4.0')!;
+    let targetVersion = '3.4.0';
     if (to) {
-        const userInput = semver.coerce(to.split('=')[1]);
+        const userInput = to.split('=')[1];
         if (userInput) targetVersion = userInput;
     }
-    main(src, target, targetVersion);
+    downlevelDts(src, target, targetVersion);
 }
 
 function createSourceFileTransformer(

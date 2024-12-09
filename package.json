@@ -19,6 +19,9 @@
     },
     "author": "Nathan Shively-Sanders",
     "license": "MIT",
+    "engines": {
+        "node": ">=14.0.0"
+    },
     "dependencies": {
         "@types/semver": "^7.3.4",
         "semver": "^7.3.2",
