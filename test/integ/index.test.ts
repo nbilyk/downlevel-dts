@@ -6,7 +6,7 @@ import path from 'path';
 
 const SRC_DIR = 'test/integ/original';
 const OUT_DIR_BASE = 'test/integ/baselines/actual';
-const EXPECTED_DIR_BASE = 'test/integ/baselines/reference';
+const EXPECTED_DIR_BASE = 'test/integ/baselines/expected';
 
 const VERSIONS = [
     '3.4',
@@ -27,7 +27,7 @@ const VERSIONS = [
 
 describe('downlevelDts', () => {
     beforeAll(() => {
-        fs.rmSync(OUT_DIR_BASE, { recursive: true, force: true })
+        fs.rmSync(OUT_DIR_BASE, { recursive: true, force: true });
     }, /* timeout */ 10 * 1000);
 
     for (const tsVersion of VERSIONS) {
@@ -39,9 +39,9 @@ describe('downlevelDts', () => {
 
                 downlevelDts(SRC_DIR, outDir, tsVersion);
 
-                for (const expectedFile of globSync(
-                    `${EXPECTED_DIR_BASE}/ts${tsVersion}/**/*.d.ts`,
-                )) {
+                const dtsFiles = globSync(`${expectedDir}/**/*.d.ts`);
+                if (!dtsFiles.length) fail('d.ts files not found');
+                for (const expectedFile of dtsFiles) {
                     const actualFile = path.resolve(
                         outDir,
                         path.relative(expectedDir, expectedFile),

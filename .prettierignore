@@ -1,2 +1,2 @@
-baselines/
-test/
+test/integ/baselines
+test/integ/original
