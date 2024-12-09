@@ -49,6 +49,7 @@ export function downlevelDts(src: string, target: string, targetVersionStr = '3.
     const printer = ts.createPrinter({
         newLine: ts.NewLineKind.CarriageReturnLineFeed,
     });
+    console.log(`transforming ${src} to ts ${targetVersion}`);
 
     //
 
