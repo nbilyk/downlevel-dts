@@ -11,7 +11,8 @@
         "test": "jest",
         "validate": "npm run lint:fix && npm run test",
         "build": "tsc && node scripts/makeExecutable.js",
-        "baseline-accept": "cp -r test/integ/baselines/actual/ts* test/integ/baselines/expected"
+        "baseline-accept": "cp -r test/integ/baselines/actual/ts* test/integ/baselines/expected",
+        "test:compiler": "./scripts/testAllVersions.sh"
     },
     "repository": {
         "type": "git",

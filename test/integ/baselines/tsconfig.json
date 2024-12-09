@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "strict": false,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "target": "ES2015",
+        "module": "CommonJS",
+        "lib": ["ESNext", "DOM"],
+        "useDefineForClassFields": true
+    },
+    "include": [
+        "**/*"
+    ],
+}
