@@ -1,4 +1,4 @@
 node_modules/
-baselines/local/
+test/integ/baselines/actual/
 /.idea/
 /dist/

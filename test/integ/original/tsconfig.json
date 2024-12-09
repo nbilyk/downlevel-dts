@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "strict": false,
+        "noEmit": true,
+        "target": "esnext",
+        "skipLibCheck": true,
+        "types": [],
+        "typeRoots": []
+    },
+    "include": [
+        "**/*"
+    ],
+}

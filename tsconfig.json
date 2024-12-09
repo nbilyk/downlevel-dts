@@ -1,13 +1,17 @@
 {
     "compilerOptions": {
         "strict": true,
-        "allowJs": true,
-        "checkJs": true,
         "noEmit": false,
         "target": "esnext",
         "module": "commonjs",
         "esModuleInterop": true,
-        "outDir": "./dist"
+        "outDir": "./dist",
+        "rootDir": ".",
+        "baseUrl": ".",
+        "resolveJsonModule": true,
+        "paths": {
+            "@src/*": ["src/*"]
+        }
     },
-    "include": ["src/index.ts"]
+    "include": ["src/**/*"]
 }

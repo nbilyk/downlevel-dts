@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import semver, { SemVer } from 'semver';
-import assert from 'assert';
 import path from 'path';
 import ts, {
     type AccessorDeclaration,
@@ -21,7 +20,7 @@ import ts, {
     type TypeReferenceNode,
 } from 'typescript';
 import fs from 'fs';
-import sh from 'shelljs';
+import { globSync } from 'glob';
 
 export function main(src: string, target: string, targetVersion: SemVer) {
     if (!src || !target) {
@@ -29,12 +28,11 @@ export function main(src: string, target: string, targetVersion: SemVer) {
         process.exit(1);
     }
 
-    // TODO: target path is probably wrong for absolute src (or target?)
-    // TODO: Probably will want to alter package.json if discovered in the right place.
-    const program = ts.createProgram(
-        sh.find(path.join(src)).filter((f) => f.endsWith('.d.ts') && !/node_modules/.test(f)),
-        {},
-    );
+    // Find files matching the pattern while excluding `node_modules`
+    const dtsFiles = globSync(`${src}/**/*.d.ts`, {
+        ignore: '**/node_modules/**',
+    });
+    const program = ts.createProgram(dtsFiles, {});
     const checker = program.getTypeChecker(); // just used for setting parent pointers right now
     const files = mapDefined(program.getRootFileNames(), program.getSourceFile);
     const printer = ts.createPrinter({
@@ -52,7 +50,7 @@ export function main(src: string, target: string, targetVersion: SemVer) {
                 target,
                 path.resolve(sourceFile.fileName).slice(path.resolve(src).length),
             );
-            sh.mkdir('-p', path.dirname(targetPath));
+            fs.mkdirSync(path.dirname(targetPath), { recursive: true });
             fs.writeFileSync(targetPath, dedupeTripleSlash(printer.printFile(sourceFile)));
         }
     }
