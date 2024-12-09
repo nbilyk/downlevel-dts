@@ -259,8 +259,14 @@ function createSourceFileTransformer(
         }
 
         if (semver.lt(targetVersion, '4.1.0')) {
-            if (n.kind === ts.SyntaxKind.TemplateLiteralType) {
-                // TemplateLiteralType added in 4.2
+            if (
+                n.kind === ts.SyntaxKind.TemplateLiteralType ||
+                isTypeReference(n, 'Uppercase') ||
+                isTypeReference(n, 'Lowercase') ||
+                isTypeReference(n, 'Capitalize') ||
+                isTypeReference(n, 'Uncapitalize')
+            ) {
+                // TemplateLiteralType added in 4.1
                 // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#template-literal-types
                 return ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword);
             }

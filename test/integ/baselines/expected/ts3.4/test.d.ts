@@ -75,6 +75,10 @@ export declare const foo: {
 export type IR = IteratorResult<number>;
 /** Template Literal - supported since 4.1 < should be StringKeyword */
 export type TTemplateLiteral = string;
+export type TLowercase = string;
+export type TUppercase = string;
+export type TCapitalize = string;
+export type TUncapitalize = string;
 interface InterfaceWithAccessors {
     foo: number;
     readonly bar: number;

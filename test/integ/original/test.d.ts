@@ -84,6 +84,10 @@ export type IR = IteratorResult<number, string>;
 
 /** Template Literal - supported since 4.1 < should be StringKeyword */
 export type TTemplateLiteral = `${string}abc${string}`;
+export type TLowercase = Lowercase<'ABC'>;
+export type TUppercase = Uppercase<'abc'>;
+export type TCapitalize = Capitalize<'abc'>;
+export type TUncapitalize = Uncapitalize<'Abc'>;
 
 interface InterfaceWithAccessors {
   get foo(): number
