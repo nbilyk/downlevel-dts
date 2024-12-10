@@ -4,7 +4,7 @@ converting code with new features into code that uses equivalent old
 features. For example, it rewrites accessors to properties, because
 TypeScript didn't support accessors in .d.ts files until 3.6:
 
-```ts
+```typescript
 declare class C {
     get x(): number;
 }
@@ -12,7 +12,7 @@ declare class C {
 
 becomes
 
-```ts
+```typescript
 declare class C {
     readonly x: number;
 }
@@ -29,13 +29,13 @@ Here is the list of features that are down-levelled:
 
 ### `Omit` (3.5)
 
-```ts
+```typescript
 type Less = Omit<T, K>;
 ```
 
 becomes
 
-```ts
+```typescript
 type Less = Pick<T, Exclude<keyof T, K>>;
 ```
 
@@ -53,7 +53,7 @@ TypeScript 3.6 because they behave very similarly to properties.
 However, they behave differently with inheritance, so the distinction
 can be useful.
 
-```ts
+```typescript
 declare class C {
     get x(): number;
 }
@@ -61,7 +61,7 @@ declare class C {
 
 becomes
 
-```ts
+```typescript
 declare class C {
     readonly x: number;
 }
@@ -82,14 +82,14 @@ This allows TypeScript to understand that whatever condition such a function che
 
 Since there is no way to model this before 3.7, such functions are down-levelled to return `void`:
 
-```ts
+```typescript
 declare function assertIsString(val: any, msg?: string): asserts val is string;
 declare function assert(val: any, msg?: string): asserts val;
 ```
 
 becomes
 
-```ts
+```typescript
 declare function assertIsString(val: any, msg?: string): void;
 declare function assert(val: any, msg?: string): void;
 ```
@@ -98,13 +98,13 @@ declare function assert(val: any, msg?: string): void;
 
 The downlevel emit is quite simple:
 
-```ts
+```typescript
 import type { T } from 'x';
 ```
 
 becomes
 
-```ts
+```typescript
 import { T } from 'x';
 ```
 
@@ -113,26 +113,26 @@ import { T } from 'x';
 The downlevel d.ts will be less strict because a class will be
 constructable:
 
-```ts
+```typescript
 declare class C {}
 export type { C };
 ```
 
 becomes
 
-```ts
+```typescript
 declare class C {}
 export { C };
 ```
 
 and the latter allows construction:
 
-```ts
+```typescript
 import { C } from 'x';
 var c = new C();
 ```
 
-### `type` modifiers on import/export names (4.5)
+### `type` modifiers on import/export names (3.7, 4.5)
 
 The downlevel emit depends on the TypeScript target version and whether type and
 value imports/exports are mixed.
@@ -140,14 +140,14 @@ value imports/exports are mixed.
 An import/export declaration with only import/export names that have `type`
 modifiers
 
-```ts
+```typescript
 import { type A, type B } from 'x';
 export { type A, type B };
 ```
 
 becomes:
 
-```ts
+```typescript
 // TS 3.8+
 import type { A, B } from 'x';
 export type { A, B };
@@ -159,14 +159,14 @@ export { A, B };
 
 A mixed import/export declaration
 
-```ts
+```typescript
 import { A, type B } from 'x';
 export { A, type B };
 ```
 
 becomes:
 
-```ts
+```typescript
 // TS 3.8+
 import type { B } from 'x';
 import { A } from 'x';
@@ -198,7 +198,7 @@ addition to its compile-time-only private properties. Since neither
 are accessible at compile-time, downlevel-dts converts #private
 properties to compile-time private properties:
 
-```ts
+```typescript
 declare class C {
     #private;
 }
@@ -206,9 +206,9 @@ declare class C {
 
 It becomes:
 
-```ts
+```typescript
 declare class C {
-  private "#private"`
+    private '#private';
 }
 ```
 
@@ -220,7 +220,7 @@ adds only the name of the property, but not the type. The d.ts
 includes only enough information for consumers to avoid interfering
 with the private property:
 
-```ts
+```typescript
 class C {
     #x = 1;
     private y = 2;
@@ -229,7 +229,7 @@ class C {
 
 emits
 
-```ts
+```typescript
 declare class C {
     #private;
     private y;
@@ -238,7 +238,7 @@ declare class C {
 
 which then downlevels to
 
-```ts
+```typescript
 declare class C {
     private '#private';
     private y;
@@ -257,13 +257,13 @@ d.ts **also** shouldn't do this.
 TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` syntax, which is just syntactic sugar for two import/export
 statements:
 
-```ts
+```typescript
 export * as ns from 'x';
 ```
 
 becomes
 
-```ts
+```typescript
 import * as ns_1 from 'x';
 export { ns_1 as ns };
 ```
@@ -276,15 +276,19 @@ The downlevel semantics should be exactly the same as the original.
 
 TypeScript 4.0 supports naming tuple members:
 
-```ts
+```typescript
 type T = [foo: number, bar: string];
 ```
 
 becomes
 
-```ts
+```typescript
 type T = [/** foo */ number, /** bar */ string];
 ```
+
+TypeScript 5.2 allows tuples where named members are mixed.
+Prior to 5.2 if some tuple members are named and others are not, they will all
+be replaced with unnamed members.
 
 #### Semantics
 
@@ -295,7 +299,7 @@ the TypeScript language service won't be able to show the member names.
 
 Typescript 4.7 supports variance annotations on type parameter declarations:
 
-```ts
+```typescript
 interface State<in out T> {
     get: () => T;
     set: (value: T) => void;
@@ -304,7 +308,7 @@ interface State<in out T> {
 
 becomes:
 
-```ts
+```typescript
 interface State<T> {
     get: () => T;
     set: (value: T) => void;
@@ -333,8 +337,10 @@ down-levelled, nor are there any other plans to support TypeScript 2.x.
 3. To your package.json, add
 
 ```json
-"typesVersions": {
-  "<4.0": { "*": ["ts3.4/*"] }
+{
+    "typesVersions": {
+        "<4.0": { "*": ["ts3.4/*"] }
+    }
 }
 ```
 

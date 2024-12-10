@@ -58,7 +58,10 @@ declare function guardIsString(val: any): val is string;
 declare function assertIsString(val: any, msg?: string): asserts val is string;
 declare function assert(val: any, msg?: string): asserts val;
 
-type J = [foo: string, bar: number, ...arr:boolean[]]
+// 4.0, named tuples
+type NamedTuple = [foo: string, bar: number, ...arr:boolean[]]
+// 5.2 mixed named tuples
+type MixedNamedTuple = [foo: string, number, ...arr:boolean[]]
 
 export * as default from "./subdir/test";
 
@@ -149,10 +152,10 @@ export declare const objectLiteralWithAccessors: {
   set nim(value: string);
 }
 
-// Variadic tuple types
+// Variadic tuple types >= 4.0
 export type StringsTuple = [string, string];
 export type NumbersTuple = [number, number];
 export type StrStrNumNumBool = [...StringsTuple, ...NumbersTuple, boolean];
 export type ReadonlyStrStrNumNumBool = readonly [...StringsTuple, ...NumbersTuple, boolean];
-export type SpreadAtEnd = readonly [boolean, ...rest: StringsTuple];
-export type ArraySpreadAtEnd = readonly [boolean, ...rest: string[]];
+export type SpreadAtEnd = readonly [boolean, ...StringsTuple];
+export type ArraySpreadAtEnd = readonly [boolean, ...string[]];

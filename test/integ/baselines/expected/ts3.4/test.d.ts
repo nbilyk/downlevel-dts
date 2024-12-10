@@ -50,7 +50,10 @@ declare function guardIsString(val: any): val is string;
 /** side-effects! */
 declare function assertIsString(val: any, msg?: string): void;
 declare function assert(val: any, msg?: string): void;
-type J = any[];
+// 4.0, named tuples
+type NamedTuple = any[];
+// 5.2 mixed named tuples
+type MixedNamedTuple = any[];
 import * as default_1 from "./subdir/test";
 export { default_1 as default };
 export declare type Asserts<T> = (val: unknown) => void;
@@ -107,7 +110,7 @@ export declare const objectLiteralWithAccessors: {
     //getter is not assignable to setter type
     nim: number | string;
 };
-// Variadic tuple types
+// Variadic tuple types >= 4.0
 export type StringsTuple = [
     string,
     string

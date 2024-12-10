@@ -293,6 +293,9 @@ function createSourceFileTransformer(
             if (isNamespaceReexport(n) && n.exportClause.name.getText() === 'default') {
                 return convertNamespaceReexport(n);
             }
+
+            // 4.1 introduced support for recursive conditional types.
+            // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#recursive-conditional-types
         }
 
         if (semver.lt(targetVersion, '4.3.0')) {
@@ -545,7 +548,7 @@ function createSourceFileTransformer(
             }
         }
 
-        if (semver.lt(targetVersion, '5.4.0')) {
+        if (semver.lt(targetVersion, '5.2.0')) {
             // All tuple members must be named, or none. Check if parent tuple has
             // mixed members and replace with commented, unnamed member.
             if (
