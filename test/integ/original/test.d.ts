@@ -90,28 +90,36 @@ export type TCapitalize = Capitalize<'abc'>;
 export type TUncapitalize = Uncapitalize<'Abc'>;
 
 interface InterfaceWithAccessors {
-  get foo(): number
-  set foo(value: number)
+  get foo(): number;
+  set foo(value: number);
 
-  get bar(): number
+  get bar(): number;
 
-  set baz(value: number)
+  set baz(value: number);
 }
 
 type TypeLiteralWithAccessors = {
-  get foo(): number
-  set foo(value: number)
+  get foo(): number;
+  set foo(value: number);
 
-  get bar(): number
+  get bar(): number;
 
-  set baz(value: number)
+  set baz(value: number);
 }
 
 export declare const objectLiteralWithAccessors: {
-  get foo(): number
-  set foo(value: number)
+  get foo(): number;
+  set foo(value: number);
 
-  get bar(): number
+  get bar(): number;
 
-  set baz(value: number)
+  set baz(value: number);
 }
+
+// Variadic tuple types
+type StringsTuple = [string, string];
+type NumbersTuple = [number, number];
+type StrStrNumNumBool = [...StringsTuple, ...NumbersTuple, boolean];
+type ReadonlyStrStrNumNumBool = readonly [...StringsTuple, ...NumbersTuple, boolean];
+type SpreadAtEnd = readonly [boolean, ...rest: StringsTuple];
+type ArraySpreadAtEnd = readonly [boolean, ...rest: string[]];

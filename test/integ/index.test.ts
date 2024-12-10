@@ -2,7 +2,7 @@ import { downlevelDts } from '../../src';
 
 import * as fs from 'fs';
 import { globSync } from 'glob';
-import path from 'path';
+import path from 'node:path';
 
 const SRC_DIR = 'test/integ/original';
 const OUT_DIR_BASE = 'test/integ/baselines/actual';

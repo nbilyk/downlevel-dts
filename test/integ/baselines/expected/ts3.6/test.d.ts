@@ -52,11 +52,7 @@ declare function guardIsString(val: any): val is string;
 /** side-effects! */
 declare function assertIsString(val: any, msg?: string): void;
 declare function assert(val: any, msg?: string): void;
-type J = [
-    /*foo*/ string,
-    /*bar*/ number,
-    /*arr*/ ...boolean[]
-];
+type J = any[];
 import * as default_1 from "./subdir/test";
 export { default_1 as default };
 export declare type Asserts<T> = (val: unknown) => void;
@@ -96,3 +92,16 @@ export declare const objectLiteralWithAccessors: {
     readonly bar: number;
     baz: number;
 };
+// Variadic tuple types
+type StringsTuple = [
+    string,
+    string
+];
+type NumbersTuple = [
+    number,
+    number
+];
+type StrStrNumNumBool = any[];
+type ReadonlyStrStrNumNumBool = readonly any[];
+type SpreadAtEnd = readonly any[];
+type ArraySpreadAtEnd = readonly any[];

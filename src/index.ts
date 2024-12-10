@@ -6,8 +6,6 @@ import ts, {
     type ClassElement,
     type Expression,
     type ExpressionWithTypeArguments,
-    type NamedExportBindings,
-    type NamedTupleMember,
     type NamespaceExport,
     type Node,
     type NodeArray,
@@ -134,6 +132,20 @@ function convertNamespaceReexport(n: NamespaceReexport) {
     ];
 }
 
+/**
+ * In a named tuple member, remove the name, replacing with a comment.
+ *
+ * @param n
+ */
+function removeTupleMemberName(n: ts.NamedTupleMember): TypeNode {
+    return ts.addSyntheticLeadingComment(
+        n.dotDotDotToken ? ts.factory.createRestTypeNode(n.type) : n.type,
+        ts.SyntaxKind.MultiLineCommentTrivia,
+        ts.unescapeLeadingUnderscores(n.name.escapedText),
+        /*hasTrailingNewline*/ false,
+    );
+}
+
 function createSourceFileTransformer(
     checker: TypeChecker,
     targetVersion: SemVer,
@@ -246,16 +258,23 @@ function createSourceFileTransformer(
         }
 
         if (semver.lt(targetVersion, '4.0.0')) {
-            if (n.kind === ts.SyntaxKind.NamedTupleMember) {
-                const member = n as NamedTupleMember;
-                return ts.addSyntheticLeadingComment(
-                    member.dotDotDotToken
-                        ? ts.factory.createRestTypeNode(member.type)
-                        : member.type,
-                    ts.SyntaxKind.MultiLineCommentTrivia,
-                    ts.unescapeLeadingUnderscores(member.name.escapedText),
-                    /*hasTrailingNewline*/ false,
-                );
+            // variadic tuple types not supported in earlier versions. Use Array<any>
+            // spread is allowed if at the last position and an array type.
+            if (
+                ts.isTupleTypeNode(n) &&
+                n.elements.find((element, index) => {
+                    return (
+                        ts.isRestTypeNode(element) ||
+                        (ts.isNamedTupleMember(element) && element.dotDotDotToken)
+                    );
+                })
+            ) {
+                return ts.factory.createArrayTypeNode(defaultAny(undefined));
+            }
+
+            // Previous to 4.0 tuple members must not have names.
+            if (ts.isNamedTupleMember(n)) {
+                return removeTupleMemberName(n);
             }
         }
 
@@ -492,6 +511,18 @@ function createSourceFileTransformer(
                     n.constraint,
                     n.default,
                 );
+            }
+        }
+
+        if (semver.lt(targetVersion, '5.4.0')) {
+            // All tuple members must be named, or none. Check if parent tuple has
+            // mixed members and replace with commented, unnamed member.
+            if (
+                ts.isNamedTupleMember(n) &&
+                ts.isTupleTypeNode(n.parent) &&
+                n.parent.elements.find((element) => !ts.isNamedTupleMember(element))
+            ) {
+                return removeTupleMemberName(n);
             }
         }
 

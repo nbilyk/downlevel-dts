@@ -97,3 +97,30 @@ export declare const objectLiteralWithAccessors: {
     get bar(): number;
     set baz(value: number);
 };
+// Variadic tuple types
+type StringsTuple = [
+    string,
+    string
+];
+type NumbersTuple = [
+    number,
+    number
+];
+type StrStrNumNumBool = [
+    ...StringsTuple,
+    ...NumbersTuple,
+    boolean
+];
+type ReadonlyStrStrNumNumBool = readonly [
+    ...StringsTuple,
+    ...NumbersTuple,
+    boolean
+];
+type SpreadAtEnd = readonly [
+    boolean,
+    /*rest*/ ...StringsTuple
+];
+type ArraySpreadAtEnd = readonly [
+    boolean,
+    /*rest*/ ...string[]
+];

@@ -18,16 +18,14 @@ declare class C {
 }
 ```
 
-Note that not all features can be downlevelled. For example,
+Note that not all features can be down-levelled. For example,
 TypeScript 4.0 allows spreading multiple tuple type variables, at any
-position in a tuple. This is not allowed in previous versions, but has
-no obvious downlevel emit, so downlevel-dts doesn't attempt to do
-anything. Be sure to test the output of downlevel-dts with the
-appropriate version of TypeScript.
+position in a tuple. This is not allowed in previous versions, and is
+down-levelled to `any[]`.
 
 ## Features
 
-Here is the list of features that are downlevelled:
+Here is the list of features that are down-levelled:
 
 ### `Omit` (3.5)
 
@@ -82,7 +80,7 @@ for more detail.
 TypeScript 3.7 introduced the `asserts` keyword, which provides a way to indicate that a function will throw if a parameter doesn't meet a condition.
 This allows TypeScript to understand that whatever condition such a function checks must be true for the remainder of the containing scope.
 
-Since there is no way to model this before 3.7, such functions are downlevelled to return `void`:
+Since there is no way to model this before 3.7, such functions are down-levelled to return `void`:
 
 ```ts
 declare function assertIsString(val: any, msg?: string): asserts val is string;
@@ -324,7 +322,7 @@ downlevel-dts targets TypeScript 3.4 by default. The downlevel target is
 configurable with `--to` argument.
 
 Currently, TypeScript 3.0 features like `unknown` are not
-downlevelled, nor are there any other plans to support TypeScript 2.x.
+down-levelled, nor are there any other plans to support TypeScript 2.x.
 
 ### Downlevel semantics
 

@@ -4,7 +4,9 @@
         "noEmit": true,
         "target": "ES2015",
         "module": "CommonJS",
-        "lib": ["ESNext", "DOM"]
+        "lib": ["ESNext", "DOM"],
+        "types": ["node", "jest"],
+        "esModuleInterop": true
     },
     "include": ["**/*"]
 }
