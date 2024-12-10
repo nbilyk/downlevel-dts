@@ -43,7 +43,7 @@ export function downlevelDts(src: string, target: string, targetVersionStr = '3.
     });
     const program = ts.createProgram(dtsFiles, {});
     const checker = program.getTypeChecker(); // just used for setting parent pointers right now
-    const files = mapDefined(program.getRootFileNames(), program.getSourceFile);
+    const files = program.getRootFileNames().map(program.getSourceFile).filter(isNonNull);
     const printer = ts.createPrinter({
         newLine: ts.NewLineKind.CarriageReturnLineFeed,
     });
@@ -269,7 +269,7 @@ function createSourceFileTransformer(
                     );
                 })
             ) {
-                return ts.factory.createArrayTypeNode(defaultAny(undefined));
+                return ts.factory.createArrayTypeNode(createAnyType());
             }
 
             // Previous to 4.0 tuple members must not have names.
@@ -295,14 +295,26 @@ function createSourceFileTransformer(
             }
         }
 
-        if (semver.lt(targetVersion, '4.3.2')) {
-            if (
-                ts.isAccessor(n) &&
-                (ts.isInterfaceDeclaration(n.parent) ||
+        if (semver.lt(targetVersion, '4.3.0')) {
+            if (ts.isAccessor(n)) {
+                // Accessors became supported in interfaces, object literals, and type literals in 4.3
+                if (
+                    ts.isInterfaceDeclaration(n.parent) ||
                     ts.isObjectLiteralElement(n.parent) ||
-                    ts.isTypeLiteralNode(n.parent))
-            ) {
-                return convertAccessorToProperty(n);
+                    ts.isTypeLiteralNode(n.parent)
+                ) {
+                    return convertAccessorToProperty(n);
+                }
+
+                // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-3.html#separate-write-types-on-properties
+                // 4.3 allows separate write types for getters/setters.
+                const other = getMatchingAccessor(n);
+                const typeA = getAccessorType(n);
+                const typeB = getAccessorType(other);
+                if (!areTypesEqual(typeA, typeB)) {
+                    const newType = createDistinctUnionType([typeA, typeB]);
+                    return convertAccessorType(n, newType ?? createAnyType());
+                }
             }
         }
 
@@ -514,6 +526,25 @@ function createSourceFileTransformer(
             }
         }
 
+        if (semver.lt(targetVersion, '5.1.0')) {
+            // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html#unrelated-types-for-getters-and-setters
+            // 5.1 allows unrelated getters/setters, prior to this the return type of the 'get' accessor must be
+            // assignable to its 'set' accessor type
+            if (ts.isSetAccessor(n)) {
+                const getter = getMatchingAccessor(n);
+                if (getter) {
+                    const setTypeNode = getAccessorType(n);
+                    const setType = checker.getTypeFromTypeNode(setTypeNode ?? createAnyType());
+                    const getTypeNode = getter.type;
+                    const getType = checker.getTypeFromTypeNode(getTypeNode ?? createAnyType());
+                    if (!checker.isTypeAssignableTo(getType, setType)) {
+                        const newType = createDistinctUnionType([getTypeNode, setTypeNode]);
+                        return convertAccessorType(n, newType ?? createAnyType());
+                    }
+                }
+            }
+        }
+
         if (semver.lt(targetVersion, '5.4.0')) {
             // All tuple members must be named, or none. Check if parent tuple has
             // mixed members and replace with commented, unnamed member.
@@ -537,8 +568,8 @@ function createSourceFileTransformer(
     };
 }
 
-function defaultAny(t: TypeNode | undefined) {
-    return t ?? ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+function createAnyType(): TypeNode {
+    return ts.factory.createKeywordTypeNode(SyntaxKind.AnyKeyword);
 }
 
 function getMatchingAccessor(n: AccessorDeclaration): AccessorDeclaration | undefined {
@@ -597,13 +628,8 @@ function dedupeTripleSlash(s: string): string {
     return [...new Set(lines.slice(0, i)), ...lines.slice(i)].join('\n');
 }
 
-function mapDefined<T, U>(l: readonly T[], f: (t: T) => U | false | undefined): U[] {
-    const acc = [];
-    for (const x of l) {
-        const y = f(x);
-        if (y) acc.push(y);
-    }
-    return acc;
+function isNonNull<T>(value: T): value is NonNullable<T> {
+    return value != null;
 }
 
 function flatMap<T, U>(l: readonly T[], f: (t: T) => U[]): U[] {
@@ -672,6 +698,11 @@ function convertAccessorToProperty(n: AccessorDeclaration): Node | undefined {
         flags |= ts.ModifierFlags.Readonly;
     }
     const modifiers = ts.factory.createModifiersFromModifierFlags(flags);
+
+    // TS >=4.3 allows separate write types on properties.
+    // The best we can do here is make the property a union of the setter and getter types.
+    const type = createDistinctUnionType([getAccessorType(n), getAccessorType(other)]);
+
     return copyComments(
         other ? [n, other] : [n],
         ts.factory.createPropertyDeclaration(
@@ -679,8 +710,80 @@ function convertAccessorToProperty(n: AccessorDeclaration): Node | undefined {
             n.name,
             /*?! token*/ undefined,
             // A setter without a getter should use the first parameter as a type
-            defaultAny(ts.isSetAccessor(n) ? n.parameters[0].type : n.type),
+            type ?? createAnyType(),
             /*initialiser*/ undefined,
         ),
     );
+}
+
+function convertAccessorType(n: AccessorDeclaration, newType: TypeNode) {
+    if (ts.isGetAccessor(n)) {
+        // Update the return type of the get accessor
+        return ts.factory.updateGetAccessorDeclaration(
+            n,
+            n.modifiers,
+            n.name,
+            n.parameters,
+            newType, // New return type
+            n.body,
+        );
+    } else if (ts.isSetAccessor(n)) {
+        const updatedParameter = ts.factory.updateParameterDeclaration(
+            n.parameters[0],
+            n.parameters[0].modifiers,
+            n.parameters[0].dotDotDotToken,
+            n.parameters[0].name,
+            n.parameters[0].questionToken,
+            newType,
+            n.parameters[0].initializer,
+        );
+
+        // Return updated set accessor
+        return ts.factory.updateSetAccessorDeclaration(
+            n,
+            n.modifiers,
+            n.name,
+            [updatedParameter],
+            n.body,
+        );
+    }
+}
+
+/**
+ * Returns the type of accessor. For a getter this is the return type, for a setter this is the
+ * first parameter's type.
+ *
+ * @param n
+ */
+function getAccessorType(n: AccessorDeclaration | undefined): TypeNode | undefined {
+    if (!n) return undefined;
+    return ts.isSetAccessor(n) ? n.parameters[0].type : n.type;
+}
+
+/**
+ * Creates a union type where identical members are coalesced.
+ * @param members
+ */
+function createDistinctUnionType(members: (TypeNode | undefined)[]): TypeNode | undefined {
+    const uniqueMembers = new Map<string, TypeNode>();
+
+    for (const member of members) {
+        if (!member) continue;
+        const typeString = member.getText();
+        if (!uniqueMembers.has(typeString)) {
+            uniqueMembers.set(typeString, member);
+        }
+    }
+    if (uniqueMembers.size === 0) return createAnyType();
+    return ts.factory.createUnionTypeNode(Array.from(uniqueMembers.values()));
+}
+
+/**
+ * Returns true if both types are equal.
+ *
+ * Note: does not account for type aliases, unions, intersections, and more complex type
+ * resolutions.
+ */
+function areTypesEqual(type1: TypeNode | undefined, type2: TypeNode | undefined): boolean {
+    return type1?.kind === type2?.kind && type1?.getText() === type2?.getText();
 }

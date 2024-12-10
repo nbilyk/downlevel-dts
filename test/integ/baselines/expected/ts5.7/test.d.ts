@@ -18,21 +18,18 @@ export namespace N {
 }
 /** is this a single-line comment? */
 import type { C as CD } from "./subdir/test";
-/*preserve 1 */
-import type { C as CD2, C as CD3 } from "./subdir/test";
-/*preserve 2 */
-import type { C as CD5 } from "./subdir/test";
-import { C as CD4 } from "./subdir/test";
-/*preserve 3 */
-export type { CD2, CD3 };
-/*preserve 4 */
-export type { CD5 };
-export { CD4 };
-/*preserve 5 */
-export type { C as CD6, C as CD7 } from "./subdir/test";
-/*preserve 6 */
-export type { C as CD9 } from "./subdir/test";
-export { C as CD8 } from "./subdir/test";
+/** preserve 1 */
+import { type C as CD2, type C as CD3 } from "./subdir/test";
+/** preserve 2 */
+import { C as CD4, type C as CD5 } from "./subdir/test";
+/** preserve 3 */
+export { type CD2, type CD3 };
+/** preserve 4 */
+export { CD4, type CD5 };
+/** preserve 5 */
+export { type C as CD6, type C as CD7 } from "./subdir/test";
+/** preserve 6 */
+export { C as CD8, type C as CD9 } from "./subdir/test";
 // comment
 export * as subdir from "./subdir/test";
 export interface E {
@@ -62,11 +59,11 @@ type J = [
 export * as default from "./subdir/test";
 export declare type Asserts<T> = (val: unknown) => asserts val is T;
 // Covariant on T
-export type Getter<T> = () => T;
+export type Getter<out T> = () => T;
 // Contravariant on T
-export type Setter<T> = (value: T) => void;
+export type Setter<in T> = (value: T) => void;
 // Invariant on T
-export interface State<T> {
+export interface State<in out T> {
     get: () => T;
     set: (value: T) => void;
 }
@@ -91,7 +88,7 @@ export class ClassWithAccessors {
     set biz(value: number | string);
     // getter is not assignable to setter type
     get nim(): number;
-    set nim(value: number | string);
+    set nim(value: string);
 }
 export interface InterfaceWithAccessors {
     get foo(): number;
@@ -102,7 +99,7 @@ export interface InterfaceWithAccessors {
     set biz(value: number | string);
     // getter is not assignable to setter type
     get nim(): number;
-    set nim(value: number | string);
+    set nim(value: string);
 }
 export type TypeLiteralWithAccessors = {
     get foo(): number;
@@ -113,7 +110,7 @@ export type TypeLiteralWithAccessors = {
     set biz(value: number | string);
     // getter is not assignable to setter type
     get nim(): number;
-    set nim(value: number | string);
+    set nim(value: string);
 };
 export declare const objectLiteralWithAccessors: {
     get foo(): number;
@@ -124,7 +121,7 @@ export declare const objectLiteralWithAccessors: {
     set biz(value: number | string);
     // getter is not assignable to setter type
     get nim(): number;
-    set nim(value: number | string);
+    set nim(value: string);
 };
 // Variadic tuple types
 export type StringsTuple = [
@@ -147,9 +144,9 @@ export type ReadonlyStrStrNumNumBool = readonly [
 ];
 export type SpreadAtEnd = readonly [
     boolean,
-    /*rest*/ ...StringsTuple
+    ...rest: StringsTuple
 ];
 export type ArraySpreadAtEnd = readonly [
     boolean,
-    /*rest*/ ...string[]
+    ...rest: string[]
 ];

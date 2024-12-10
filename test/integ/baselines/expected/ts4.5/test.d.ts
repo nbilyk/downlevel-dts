@@ -79,48 +79,74 @@ export type TLowercase = Lowercase<'ABC'>;
 export type TUppercase = Uppercase<'abc'>;
 export type TCapitalize = Capitalize<'abc'>;
 export type TUncapitalize = Uncapitalize<'Abc'>;
-interface InterfaceWithAccessors {
+export class ClassWithAccessors {
     get foo(): number;
     set foo(value: number);
     get bar(): number;
-    set baz(value: number);
+    // getter is assignable to setter type
+    get biz(): number;
+    set biz(value: number | string);
+    // getter is not assignable to setter type
+    get nim(): number;
+    set nim(value: number | string);
 }
-type TypeLiteralWithAccessors = {
+export interface InterfaceWithAccessors {
     get foo(): number;
     set foo(value: number);
     get bar(): number;
-    set baz(value: number);
+    // getter is assignable to setter type
+    get biz(): number;
+    set biz(value: number | string);
+    // getter is not assignable to setter type
+    get nim(): number;
+    set nim(value: number | string);
+}
+export type TypeLiteralWithAccessors = {
+    get foo(): number;
+    set foo(value: number);
+    get bar(): number;
+    // getter is assignable to setter type
+    get biz(): number;
+    set biz(value: number | string);
+    // getter is not assignable to setter type
+    get nim(): number;
+    set nim(value: number | string);
 };
 export declare const objectLiteralWithAccessors: {
     get foo(): number;
     set foo(value: number);
     get bar(): number;
-    set baz(value: number);
+    // getter is assignable to setter type
+    get biz(): number;
+    set biz(value: number | string);
+    // getter is not assignable to setter type
+    get nim(): number;
+    set nim(value: number | string);
 };
 // Variadic tuple types
-type StringsTuple = [
+export type StringsTuple = [
     string,
     string
 ];
-type NumbersTuple = [
+export type NumbersTuple = [
     number,
     number
 ];
-type StrStrNumNumBool = [
+export type StrStrNumNumBool = [
     ...StringsTuple,
     ...NumbersTuple,
     boolean
 ];
-type ReadonlyStrStrNumNumBool = readonly [
+export type ReadonlyStrStrNumNumBool = readonly [
     ...StringsTuple,
     ...NumbersTuple,
     boolean
 ];
-type SpreadAtEnd = readonly [
+export type SpreadAtEnd = readonly [
     boolean,
     /*rest*/ ...StringsTuple
 ];
-type ArraySpreadAtEnd = readonly [
+export type ArraySpreadAtEnd = readonly [
     boolean,
     /*rest*/ ...string[]
 ];

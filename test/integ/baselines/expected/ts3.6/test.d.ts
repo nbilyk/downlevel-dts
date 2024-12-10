@@ -77,31 +77,51 @@ export type TLowercase = string;
 export type TUppercase = string;
 export type TCapitalize = string;
 export type TUncapitalize = string;
-interface InterfaceWithAccessors {
-    foo: number;
-    readonly bar: number;
-    baz: number;
+export class ClassWithAccessors {
+    get foo(): number;
+    set foo(value: number);
+    get bar(): number;
+    // getter is assignable to setter type
+    get biz(): number | (number | string);
+    set biz(value: (number | string) | number);
+    // getter is not assignable to setter type
+    get nim(): number | string;
+    set nim(value: string | number);
 }
-type TypeLiteralWithAccessors = {
+export interface InterfaceWithAccessors {
     foo: number;
     readonly bar: number;
-    baz: number;
+    //getter is assignable to setter type
+    biz: number | (number | string);
+    //getter is not assignable to setter type
+    nim: number | string;
+}
+export type TypeLiteralWithAccessors = {
+    foo: number;
+    readonly bar: number;
+    //getter is assignable to setter type
+    biz: number | (number | string);
+    //getter is not assignable to setter type
+    nim: number | string;
 };
 export declare const objectLiteralWithAccessors: {
     foo: number;
     readonly bar: number;
-    baz: number;
+    //getter is assignable to setter type
+    biz: number | (number | string);
+    //getter is not assignable to setter type
+    nim: number | string;
 };
 // Variadic tuple types
-type StringsTuple = [
+export type StringsTuple = [
     string,
     string
 ];
-type NumbersTuple = [
+export type NumbersTuple = [
     number,
     number
 ];
-type StrStrNumNumBool = any[];
-type ReadonlyStrStrNumNumBool = readonly any[];
-type SpreadAtEnd = readonly any[];
-type ArraySpreadAtEnd = readonly any[];
+export type StrStrNumNumBool = any[];
+export type ReadonlyStrStrNumNumBool = readonly any[];
+export type SpreadAtEnd = readonly any[];
+export type ArraySpreadAtEnd = readonly any[];
