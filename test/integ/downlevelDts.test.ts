@@ -1,4 +1,4 @@
-import { downlevelDts } from '../../src';
+import { downlevelDts } from '../../src/downlevelDts';
 
 import * as fs from 'fs';
 import { globSync } from 'glob';
@@ -47,7 +47,11 @@ describe('downlevelDts', () => {
                 const outDir = `${OUT_DIR_BASE}/ts${tsVersion}`;
                 const expectedDir = `${EXPECTED_DIR_BASE}/ts${tsVersion}`;
 
-                downlevelDts(SRC_DIR, outDir, tsVersion);
+                downlevelDts({
+                    src: SRC_DIR,
+                    target: outDir,
+                    targetVersion: tsVersion,
+                });
 
                 const dtsFiles = globSync(`${expectedDir}/**/*.d.ts`);
                 if (!dtsFiles.length) fail('d.ts files not found');

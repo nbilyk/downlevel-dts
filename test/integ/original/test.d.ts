@@ -59,9 +59,11 @@ declare function assertIsString(val: any, msg?: string): asserts val is string;
 declare function assert(val: any, msg?: string): asserts val;
 
 // 4.0, named tuples
-type NamedTuple = [foo: string, bar: number, ...arr:boolean[]]
+type NamedTuple = [foo: string, bar: number]
+type NestedNamedTuple = [foo: string, bar: number, baz: [foo: string, bar: number]]
 // 5.2 mixed named tuples
-type MixedNamedTuple = [foo: string, number, ...arr:boolean[]]
+type MixedNamedTuple = [foo: string, number]
+type NestedMixedNamedTuple = [[foo: string, number], named: [string, bar: number]]
 
 export * as default from "./subdir/test";
 

@@ -53,9 +53,33 @@ declare function guardIsString(val: any): val is string;
 declare function assertIsString(val: any, msg?: string): void;
 declare function assert(val: any, msg?: string): void;
 // 4.0, named tuples
-type NamedTuple = any[];
+type NamedTuple = [
+    /*foo*/ string,
+    /*bar*/ number
+];
+type NestedNamedTuple = [
+    /*foo*/ string,
+    /*bar*/ number,
+    /*baz*/ [
+        /*foo*/ string,
+        /*bar*/ number
+    ]
+];
 // 5.2 mixed named tuples
-type MixedNamedTuple = any[];
+type MixedNamedTuple = [
+    /*foo*/ string,
+    number
+];
+type NestedMixedNamedTuple = [
+    [
+        /*foo*/ string,
+        number
+    ],
+    /*named*/ [
+        string,
+        /*bar*/ number
+    ]
+];
 import * as default_1 from "./subdir/test";
 export { default_1 as default };
 export declare type Asserts<T> = (val: unknown) => void;
@@ -84,10 +108,8 @@ export class ClassWithAccessors {
     get foo(): number;
     set foo(value: number);
     get bar(): number;
-    // getter is assignable to setter type
     get biz(): number | (number | string);
     set biz(value: (number | string) | number);
-    // getter is not assignable to setter type
     get nim(): number | string;
     set nim(value: string | number);
 }

@@ -54,14 +54,30 @@ declare function assert(val: any, msg?: string): asserts val;
 // 4.0, named tuples
 type NamedTuple = [
     foo: string,
+    bar: number
+];
+type NestedNamedTuple = [
+    foo: string,
     bar: number,
-    ...arr: boolean[]
+    baz: [
+        foo: string,
+        bar: number
+    ]
 ];
 // 5.2 mixed named tuples
 type MixedNamedTuple = [
     /*foo*/ string,
-    number,
-    /*arr*/ ...boolean[]
+    number
+];
+type NestedMixedNamedTuple = [
+    [
+        /*foo*/ string,
+        number
+    ],
+    /*named*/ [
+        string,
+        /*bar*/ number
+    ]
 ];
 export * as default from "./subdir/test";
 export declare type Asserts<T> = (val: unknown) => asserts val is T;
