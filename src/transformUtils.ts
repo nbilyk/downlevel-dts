@@ -11,20 +11,54 @@ import ts, {
 /**
  * Contextual properties for the transformers.
  */
-export type NodeTransformationContext = {
+export type DownlevelContext = {
     readonly targetVersion: SemVer;
     readonly checker: ts.TypeChecker;
     readonly transformationContext: ts.TransformationContext;
 };
 
 /**
- * A Node visitor additionally provided the transformation context.
+ * A Node visitor additionally provided the downlevel context and original node.
+ * DownlevelVisitors will be applied to every AST node in the graph, depth-first, post-order.
  */
-export type DtsVisitor = (
+export type DownlevelVisitor = (
     node: ts.Node,
-    context: NodeTransformationContext,
     original: ts.Node,
+    context: DownlevelContext,
 ) => ts.VisitResult<ts.Node | undefined>;
+
+/**
+ * Given a node transformer, creates a `ts.Visitor` that walks the node graph using the transformer.
+ *
+ * @param transformer
+ * @param context
+ */
+export function createRecursiveVisitorFromTransformer(
+    transformer: DownlevelVisitor,
+    context: DownlevelContext,
+): ts.Transformer<ts.Node> {
+    return (node: ts.Node) => {
+        const out = visitDfsPostOrdered(
+            node,
+            (node, original) => {
+                return transformer(node, original, context);
+            },
+            context.transformationContext,
+        );
+        if (!out) throw new Error('root node expected to be defined');
+        return out;
+    };
+}
+
+/**
+ * Merges an array of transformers into one, such that [f, g, h] becomes f(g(h(node)))
+ * @param transformers
+ */
+export function mergeTransformers(
+    transformers: ts.Transformer<ts.Node>[],
+): ts.Transformer<ts.Node> {
+    return (node) => transformers.reduce((out, transformer) => transformer(out), node);
+}
 
 /**
  * Visits a node recursively (depth-first, post-ordered).
@@ -51,20 +85,20 @@ export function visitDfsPostOrdered(
  * the key. Use '*' as a key to apply to all nodes.
  */
 export type VersionedNodeTransformers = {
-    readonly [version: string]: readonly DtsVisitor[];
+    readonly [version: string]: readonly DownlevelVisitor[];
 };
 
 /**
- * Returns a flat list of the transformers to apply for the target version.
+ * Returns a flat list of downlevel visitors to apply for the target version.
  *
  * @param transformerMap
  * @param targetVersion
  */
-export function getDtsVisitorsToApply(
+export function getVisitorsToApply(
     transformerMap: VersionedNodeTransformers,
     targetVersion: SemVer,
-): DtsVisitor[] {
-    const visitors: DtsVisitor[] = [];
+): DownlevelVisitor[] {
+    const visitors: DownlevelVisitor[] = [];
     Object.entries(transformerMap).forEach(([key, value]) => {
         if (key === '*' || semver.lt(targetVersion, key)) {
             visitors.push(...value);
@@ -81,27 +115,16 @@ export function getDtsVisitorsToApply(
  */
 export function createTransformerFromMap(
     transformerMap: VersionedNodeTransformers,
-    context: NodeTransformationContext,
+    context: DownlevelContext,
 ): ts.Visitor {
-    const visitors = getDtsVisitorsToApply(transformerMap, context.targetVersion);
-    if (!visitors.length) return (node) => node;
+    const transformers = getVisitorsToApply(transformerMap, context.targetVersion);
+    if (!transformers.length) return (node) => node;
     // Create ts.Visitor functions for each contextual visitor:
-
-    return (node) => {
-        let out = node;
-        for (const visitor of visitors) {
-            const transformed = visitDfsPostOrdered(
-                out,
-                (node, original) => {
-                    return visitor(node, context, original);
-                },
-                context.transformationContext,
-            );
-            if (!transformed) return undefined;
-            out = transformed;
-        }
-        return out;
-    };
+    return mergeTransformers(
+        transformers.map((transformer) =>
+            createRecursiveVisitorFromTransformer(transformer, context),
+        ),
+    );
 }
 
 /**
@@ -119,18 +142,13 @@ export function createSourceFileTransformer(visitor: ts.Visitor): ts.Transformer
 }
 
 /**
- * Creates a tsc Program and transforms all source files with a provided visitor.
- *
- * @param options
- * @param visitorFactory
+ * Transforms the files in a program using the visitor produced from the provided visitor factory..
  */
-export function transformFiles(
-    options: CreateProgramOptions,
+export function transformProgramFiles(
+    program: ts.Program,
     visitorFactory: (program: ts.Program, context: TransformationContext) => ts.Visitor,
 ): ts.SourceFile[] {
-    const program = ts.createProgram(options);
     const files = program.getRootFileNames().map(program.getSourceFile).filter(isNonNull);
-
     const transformerFactory: TransformerFactory<SourceFile> = (context) => {
         return createSourceFileTransformer(visitorFactory(program, context));
     };

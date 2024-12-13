@@ -1,4 +1,4 @@
-import type { DtsVisitor, VersionedNodeTransformers } from './transformUtils';
+import type { DownlevelVisitor, VersionedNodeTransformers } from './transformUtils';
 import ts from 'typescript';
 import semver from 'semver';
 import {
@@ -17,7 +17,7 @@ import {
     removeTupleMemberName,
 } from './tsAstUtils';
 
-const omitHelperType: DtsVisitor = (node, context) => {
+const omitHelperType: DownlevelVisitor = (node, _original, context) => {
     if (isTypeReference(node, 'Omit')) {
         const symbol = context.checker.getSymbolAtLocation(
             ts.isTypeReferenceNode(node) ? node.typeName : node.expression,
@@ -37,12 +37,12 @@ const omitHelperType: DtsVisitor = (node, context) => {
     return node;
 };
 
-const accessors: DtsVisitor = (node, _context, original) => {
+const accessors: DownlevelVisitor = (node, original) => {
     if (ts.isAccessor(node)) return convertAccessorToProperty(node, original.parent);
     return node;
 };
 
-const iteratorResult: DtsVisitor = (node, context) => {
+const iteratorResult: DownlevelVisitor = (node, _original, context) => {
     if (isTypeReference(node, 'IteratorResult')) {
         const symbol = context.checker.getSymbolAtLocation(
             ts.isTypeReferenceNode(node) ? node.typeName : node.expression,
@@ -58,7 +58,7 @@ const iteratorResult: DtsVisitor = (node, context) => {
     return node;
 };
 
-const functionTypeAsserts: DtsVisitor = (node) => {
+const functionTypeAsserts: DownlevelVisitor = (node) => {
     if (
         ts.isFunctionTypeNode(node) &&
         node.type &&
@@ -74,7 +74,7 @@ const functionTypeAsserts: DtsVisitor = (node) => {
     return node;
 };
 
-const functionDeclarationAsserts: DtsVisitor = (node) => {
+const functionDeclarationAsserts: DownlevelVisitor = (node) => {
     if (
         ts.isFunctionDeclaration(node) &&
         node.type &&
@@ -94,7 +94,7 @@ const functionDeclarationAsserts: DtsVisitor = (node) => {
     return node;
 };
 
-const privateIdentifier: DtsVisitor = (node) => {
+const privateIdentifier: DownlevelVisitor = (node) => {
     if (
         ts.isPropertyDeclaration(node) &&
         ts.isPrivateIdentifier(node.name) &&
@@ -114,7 +114,7 @@ const privateIdentifier: DtsVisitor = (node) => {
     return node;
 };
 
-const namespaceReexport: DtsVisitor = (node) => {
+const namespaceReexport: DownlevelVisitor = (node) => {
     if (isNamespaceReexport(node)) return convertNamespaceReexport(node);
     return node;
 };
@@ -128,7 +128,7 @@ const namespaceReexport: DtsVisitor = (node) => {
  *
  * @param node
  */
-const typeExports: DtsVisitor = (node) => {
+const typeExports: DownlevelVisitor = (node) => {
     if (ts.isExportDeclaration(node) && node.isTypeOnly) {
         return ts.factory.createExportDeclaration(
             node.modifiers,
@@ -149,14 +149,14 @@ const typeExports: DtsVisitor = (node) => {
  *
  * @param node
  */
-const typeImports: DtsVisitor = (node) => {
+const typeImports: DownlevelVisitor = (node) => {
     if (ts.isImportClause(node) && node.isTypeOnly) {
         return ts.factory.createImportClause(/* isTypeOnly */ false, node.name, node.namedBindings);
     }
     return node;
 };
 
-const variadicTuples: DtsVisitor = (node) => {
+const variadicTuples: DownlevelVisitor = (node) => {
     // variadic tuple types not supported in earlier versions. Use Array<any>
     // spread is allowed if at the last position and an array type.
     if (
@@ -178,7 +178,7 @@ const variadicTuples: DtsVisitor = (node) => {
     return node;
 };
 
-const templateLiterals: DtsVisitor = (node) => {
+const templateLiterals: DownlevelVisitor = (node) => {
     if (
         node.kind === ts.SyntaxKind.TemplateLiteralType ||
         isTypeReference(node, 'Uppercase') ||
@@ -196,7 +196,7 @@ const templateLiterals: DtsVisitor = (node) => {
     return node;
 };
 
-const interfaceAccessors: DtsVisitor = (node, _context, original) => {
+const interfaceAccessors: DownlevelVisitor = (node, original) => {
     if (ts.isAccessor(node)) {
         // Accessors became supported in interfaces, object literals, and type literals in 4.3
         const parent = original.parent;
@@ -222,7 +222,7 @@ const interfaceAccessors: DtsVisitor = (node, _context, original) => {
     return node;
 };
 
-const mixedTypeImports: DtsVisitor = (node, context) => {
+const mixedTypeImports: DownlevelVisitor = (node, _original, context) => {
     const { targetVersion } = context;
     if (
         ts.isImportDeclaration(node) &&
@@ -409,7 +409,7 @@ const mixedTypeImports: DtsVisitor = (node, context) => {
     return node;
 };
 
-const typeParameterDeclaration: DtsVisitor = (node) => {
+const typeParameterDeclaration: DownlevelVisitor = (node) => {
     if (ts.isTypeParameterDeclaration(node)) {
         return ts.factory.createTypeParameterDeclaration(
             node.modifiers?.filter(
@@ -425,7 +425,7 @@ const typeParameterDeclaration: DtsVisitor = (node) => {
     return node;
 };
 
-const unrelatedSetAccessor: DtsVisitor = (node, context, original) => {
+const unrelatedSetAccessor: DownlevelVisitor = (node, original, context) => {
     const { checker } = context;
     // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-1.html#unrelated-types-for-getters-and-setters
     // 5.1 allows unrelated getters/setters, prior to this the return type of the 'get' accessor must be
@@ -446,7 +446,7 @@ const unrelatedSetAccessor: DtsVisitor = (node, context, original) => {
     return node;
 };
 
-const tupleMixedNames: DtsVisitor = (node, _context, original) => {
+const tupleMixedNames: DownlevelVisitor = (node, original) => {
     // All tuple members must be named, or none. Check if parent tuple has
     // mixed members and replace with commented, unnamed member.
     if (

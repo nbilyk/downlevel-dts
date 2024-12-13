@@ -1,9 +1,9 @@
 import ts from 'typescript';
-import { getDtsVisitorsToApply, visitDfsPostOrdered } from '../../src/transformUtils';
+import { getVisitorsToApply, visitDfsPostOrdered } from '../../src/transformUtils';
 import { createTempSourceFile, expectSourceFileEqualTo } from './testUtil';
 import semver from 'semver';
 
-describe('getDtsVisitorsToApply', () => {
+describe('getVisitorsToApply', () => {
     it('returns a flat list of the dts visitors to apply for a given version', () => {
         const a = (): undefined => {};
         const b = (): undefined => {};
@@ -16,11 +16,11 @@ describe('getDtsVisitorsToApply', () => {
             '4.1.0': [d],
             '*': [e],
         };
-        expect(getDtsVisitorsToApply(m, semver.coerce('3.3')!)).toEqual([a, b, c, d, e]);
-        expect(getDtsVisitorsToApply(m, semver.coerce('3.4')!)).toEqual([b, c, d, e]);
-        expect(getDtsVisitorsToApply(m, semver.coerce('3.5')!)).toEqual([d, e]);
-        expect(getDtsVisitorsToApply(m, semver.coerce('4.1')!)).toEqual([e]);
-        expect(getDtsVisitorsToApply(m, semver.coerce('4.2')!)).toEqual([e]);
+        expect(getVisitorsToApply(m, semver.coerce('3.3')!)).toEqual([a, b, c, d, e]);
+        expect(getVisitorsToApply(m, semver.coerce('3.4')!)).toEqual([b, c, d, e]);
+        expect(getVisitorsToApply(m, semver.coerce('3.5')!)).toEqual([d, e]);
+        expect(getVisitorsToApply(m, semver.coerce('4.1')!)).toEqual([e]);
+        expect(getVisitorsToApply(m, semver.coerce('4.2')!)).toEqual([e]);
     });
 });
 

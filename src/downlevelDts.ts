@@ -1,7 +1,7 @@
 import semver from 'semver';
 import { globSync } from 'glob';
 import ts from 'typescript';
-import { createTransformerFromMap, transformFiles } from './transformUtils';
+import { createTransformerFromMap, transformProgramFiles } from './transformUtils';
 import { transformerMap } from './transformers';
 import path from 'path';
 import fs from 'fs';
@@ -34,25 +34,20 @@ export function downlevelDts(options: DownlevelOptions) {
     const printer = ts.createPrinter({
         newLine: ts.NewLineKind.CarriageReturnLineFeed,
     });
+    const program = ts.createProgram({
+        rootNames: dtsFiles,
+        options: {},
+    });
 
-    for (const sourceFile of transformFiles(
-        {
-            rootNames: dtsFiles,
-            options: {},
-        },
-        (program, transformationContext) => {
-            const checker = program.getTypeChecker();
-            return createTransformerFromMap(transformerMap, {
-                checker,
-                targetVersion,
-                transformationContext,
-            });
-        },
-    )) {
-        const targetPath = path.join(
-            target,
-            path.resolve(sourceFile.fileName).slice(path.resolve(src).length),
-        );
+    for (const sourceFile of transformProgramFiles(program, (program, transformationContext) => {
+        const checker = program.getTypeChecker();
+        return createTransformerFromMap(transformerMap, {
+            checker,
+            targetVersion,
+            transformationContext,
+        });
+    })) {
+        const targetPath = path.resolve(target, path.relative(src, sourceFile.fileName));
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         fs.writeFileSync(targetPath, dedupeTripleSlash(printer.printFile(sourceFile)));
     }
