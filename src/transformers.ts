@@ -1,8 +1,9 @@
-import type { DownlevelVisitor, VersionedNodeTransformers } from './transformUtils';
+import type { DownlevelVisitor, VersionedDownlevelVisitors } from './transformUtils';
 import ts from 'typescript';
 import semver from 'semver';
 import {
     areTypesEqual,
+    childWalkLevelOrder,
     convertAccessorToProperty,
     convertAccessorType,
     convertNamespaceReexport,
@@ -10,11 +11,14 @@ import {
     createAnyType,
     createDistinctUnionType,
     getAccessorType,
+    getChildren,
+    getDeclarations,
     getMatchingAccessor,
     isNamespaceReexport,
     isStdLibSymbol,
     isTypeReference,
     removeTupleMemberName,
+    TreeWalk,
 } from './tsAstUtils';
 
 const omitHelperType: DownlevelVisitor = (node, _original, context) => {
@@ -192,6 +196,58 @@ const templateLiterals: DownlevelVisitor = (node) => {
     }
     if (isNamespaceReexport(node) && node.exportClause.name.getText() === 'default') {
         return convertNamespaceReexport(node);
+    }
+    return node;
+};
+
+/**
+ * `type ElementType<T> = T extends ReadonlyArray<infer U> ? ElementType<U> : T;`
+ *
+ * becomes
+ *
+ * `type ElementType<T> = T extends ReadonlyArray<infer U> ? any : T;`
+ *
+ * Type reference nodes that are immediately within a conditional branch will be replaced with `any`.
+ */
+export const recursiveConditionalTypes: DownlevelVisitor = (node, _original, context) => {
+    if (ts.isTypeReferenceNode(node)) {
+        const { checker } = context;
+        const type = checker.getTypeAtLocation(node);
+        if (!(type.flags & ts.TypeFlags.Conditional) || !getDeclarations(node, checker)?.length) {
+            // Either not within a conditional branch or the reference is not to a defined declaration.
+            return node;
+        }
+
+        let foundCircularReference = false;
+        const visited = new Set<ts.Node>();
+
+        // A level-order child walk, following type references.
+        // Traverses the node hierarchy from top to bottom, breadth first, invoking a callback on each node.
+        // When a type reference node is reached, its declaration(s) will next be traversed. If a reference
+        // is circular, it will be visited only once.
+        childWalkLevelOrder<ts.Node>(
+            node,
+            (iNode) => {
+                const children: ts.Node[] = getChildren(iNode, context.transformationContext);
+                if (ts.isTypeReferenceNode(iNode)) {
+                    // Follow the type reference to its declaration(s).
+                    return [...children, ...(getDeclarations(iNode, checker) ?? [])];
+                }
+                return children;
+            },
+            (iNode) => {
+                if (iNode === node && visited.size) {
+                    foundCircularReference = true;
+                    return TreeWalk.HALT;
+                }
+                if (visited.has(iNode)) return TreeWalk.SKIP;
+                visited.add(iNode);
+                return TreeWalk.CONTINUE;
+            },
+        );
+        if (foundCircularReference) {
+            return createAnyType();
+        }
     }
     return node;
 };
@@ -464,13 +520,13 @@ const tupleMixedNames: DownlevelVisitor = (node, original) => {
  * A map of versions to transformers where the version is the maximum version for which the
  * transformer should be applied.
  */
-export const transformerMap: VersionedNodeTransformers = {
+export const transformerMap: VersionedDownlevelVisitors = {
     '3.5.0': [omitHelperType],
     '3.6.0': [accessors, iteratorResult],
     '3.7.0': [functionTypeAsserts, functionDeclarationAsserts],
     '3.8.0': [privateIdentifier, namespaceReexport, typeExports, typeImports],
     '4.0.0': [variadicTuples],
-    '4.1.0': [templateLiterals],
+    '4.1.0': [templateLiterals, recursiveConditionalTypes],
     '4.3.0': [interfaceAccessors],
     '4.5.0': [mixedTypeImports],
     '4.7.0': [typeParameterDeclaration],

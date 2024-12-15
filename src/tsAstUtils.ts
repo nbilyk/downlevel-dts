@@ -287,3 +287,131 @@ export function convertNamespaceReexport(n: NamespaceReexport) {
         ),
     ];
 }
+
+/**
+ * Follows type references, walking a type definition.
+ * The callback will only be invoked on a node once and stop recursion if a node is re-visited via
+ * circular references.
+ */
+export function walkTypeReferences(
+    node: ts.Node,
+    checker: ts.TypeChecker,
+    callback: (node: ts.Node) => TreeWalk,
+): void {
+    const visited = new Set<ts.Node>();
+    childWalkLevelOrder(
+        node,
+        (node) => {
+            if (ts.isTypeReferenceNode(node) && !visited.has(node)) {
+                // Follow the type reference to its declaration(s).
+                visited.add(node);
+                return [...node.getChildren(), ...(getDeclarations(node, checker) ?? [])];
+            }
+            return node.getChildren();
+        },
+        callback,
+    );
+}
+
+/**
+ * Resolves a type reference to its declarations.
+ */
+export function getDeclarations(
+    node: ts.TypeReferenceNode,
+    checker: ts.TypeChecker,
+): ts.Declaration[] | undefined {
+    const symbol = checker.getSymbolAtLocation(node.typeName);
+    return symbol?.declarations;
+}
+
+/**
+ *
+ * @param node
+ * @param transformationContext
+ */
+export function getChildren(
+    node: ts.Node,
+    transformationContext: ts.TransformationContext,
+): ts.Node[] {
+    const children: ts.Node[] = [];
+    ts.visitEachChild(
+        node,
+        (childNode) => {
+            children.push(childNode);
+            return childNode;
+        },
+        transformationContext,
+    );
+    return children;
+}
+
+//------------------------------------------------
+// Hierarchy traversal methods
+//------------------------------------------------
+
+/**
+ * Flags for what relative nodes to skip when traversing a hierarchy.
+ */
+export enum TreeWalk {
+    /**
+     * Continues iteration normally.
+     */
+    CONTINUE,
+
+    /**
+     * Skips all remaining nodes, halting iteration.
+     */
+    HALT,
+
+    /**
+     * Skips current node's children.
+     */
+    SKIP,
+
+    /**
+     * Discards nodes not descending from current node.
+     * This will have no effect in post-order traversal.
+     */
+    ISOLATE,
+}
+
+//-------------------------------------------------
+// Level order
+//-------------------------------------------------
+
+/**
+ * A level-order child walk.
+ * Traverses the node hierarchy from top to bottom, breadth first, invoking a callback on each node.
+ *
+ * @param node The starting node.
+ * @param callback The callback to invoke on each node.
+ * @param getChildren Resolves the children of a node.
+ * @param callback Invoked for each iterated node. Returns a `TreeWalk` directive.
+ */
+export function childWalkLevelOrder<T>(
+    node: T,
+    getChildren: (node: T) => readonly T[],
+    callback: (node: T) => TreeWalk,
+): void {
+    const openList: T[] = [node];
+    while (openList.length > 0) {
+        const next = openList.shift()!;
+
+        switch (callback(next)) {
+            case TreeWalk.CONTINUE:
+                break;
+
+            case TreeWalk.HALT:
+                return;
+
+            case TreeWalk.SKIP:
+                continue;
+
+            case TreeWalk.ISOLATE:
+                openList.length = 0;
+                break;
+        }
+
+        openList.push(...getChildren(next));
+    }
+}

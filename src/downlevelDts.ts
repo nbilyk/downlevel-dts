@@ -1,7 +1,7 @@
 import semver from 'semver';
 import { globSync } from 'glob';
 import ts from 'typescript';
-import { createTransformerFromMap, transformProgramFiles } from './transformUtils';
+import { downlevelProgramFiles } from './transformUtils';
 import { transformerMap } from './transformers';
 import path from 'path';
 import fs from 'fs';
@@ -39,14 +39,7 @@ export function downlevelDts(options: DownlevelOptions) {
         options: {},
     });
 
-    for (const sourceFile of transformProgramFiles(program, (program, transformationContext) => {
-        const checker = program.getTypeChecker();
-        return createTransformerFromMap(transformerMap, {
-            checker,
-            targetVersion,
-            transformationContext,
-        });
-    })) {
+    for (const sourceFile of downlevelProgramFiles(program, targetVersion, transformerMap)) {
         const targetPath = path.resolve(target, path.relative(src, sourceFile.fileName));
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         fs.writeFileSync(targetPath, dedupeTripleSlash(printer.printFile(sourceFile)));

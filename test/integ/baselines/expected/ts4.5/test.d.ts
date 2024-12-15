@@ -51,7 +51,7 @@ declare function guardIsString(val: any): val is string;
 /** side-effects! */
 declare function assertIsString(val: any, msg?: string): asserts val is string;
 declare function assert(val: any, msg?: string): asserts val;
-// 4.0, named tuples
+// 4.0 - Named tuples
 type NamedTuple = [
     foo: string,
     bar: number
@@ -62,21 +62,6 @@ type NestedNamedTuple = [
     baz: [
         foo: string,
         bar: number
-    ]
-];
-// 5.2 mixed named tuples
-type MixedNamedTuple = [
-    /*foo*/ string,
-    number
-];
-type NestedMixedNamedTuple = [
-    [
-        /*foo*/ string,
-        number
-    ],
-    /*named*/ [
-        string,
-        /*bar*/ number
     ]
 ];
 export * as default from "./subdir/test";
@@ -146,7 +131,7 @@ export declare const objectLiteralWithAccessors: {
     get nim(): number;
     set nim(value: number | string);
 };
-// Variadic tuple types >= 4.0
+// 4.0 - Variadic tuple types
 export type StringsTuple = [
     string,
     string
@@ -172,4 +157,26 @@ export type SpreadAtEnd = readonly [
 export type ArraySpreadAtEnd = readonly [
     boolean,
     ...string[]
+];
+// 4.1 - Recursive conditional types
+type RecursiveConditionalType<T> = T extends ReadonlyArray<infer U> ? RecursiveConditionalType<U> : T;
+type NotImmediatelyRecursive<T> = T extends ReadonlyArray<infer U> ? [
+    NotImmediatelyRecursive<U>
+] : T;
+type RecursiveConditionalTypeA<T> = T extends true ? RecursiveConditionalTypeB<T> : never;
+type RecursiveConditionalTypeB<T> = T extends false ? RecursiveConditionalTypeA<T> : never;
+// 5.2 - Mixed named tuples
+type MixedNamedTuple = [
+    /*foo*/ string,
+    number
+];
+type NestedMixedNamedTuple = [
+    [
+        /*foo*/ string,
+        number
+    ],
+    /*named*/ [
+        string,
+        /*bar*/ number
+    ]
 ];

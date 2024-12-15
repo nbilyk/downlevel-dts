@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getVisitorsToApply, visitDfsPostOrdered } from '../../src/transformUtils';
+import { getVisitorsToApply, postOrderVisitor } from '../../src/transformUtils';
 import { createTempSourceFile, expectSourceFileEqualTo } from './testUtil';
 import semver from 'semver';
 
@@ -24,11 +24,11 @@ describe('getVisitorsToApply', () => {
     });
 });
 
-describe('visitDfsPostOrdered', () => {
+describe('postOrderVisitor', () => {
     it('recursively visits each node in a breadth-first graph', () => {
         const sourceFile = createTempSourceFile(`type Foo = { bar: string };`);
         const walked: number[] = [];
-        visitDfsPostOrdered(sourceFile, (node) => {
+        postOrderVisitor(sourceFile, (node) => {
             walked.push(node.kind);
             return node;
         });
@@ -45,7 +45,7 @@ describe('visitDfsPostOrdered', () => {
 
     it('handles multi-node visit results', () => {
         const sourceFile = createTempSourceFile(`type Foo = { bar: string };`);
-        const updatedFile = visitDfsPostOrdered(sourceFile, (node) => {
+        const updatedFile = postOrderVisitor(sourceFile, (node) => {
             if (ts.isPropertySignature(node)) {
                 return [node, node];
             } else if (ts.isIdentifier(node) && node.text === 'bar') {

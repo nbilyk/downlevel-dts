@@ -1,7 +1,6 @@
 import semver, { SemVer } from 'semver';
 import { isNonNull } from './tsAstUtils';
 import ts, {
-    type CreateProgramOptions,
     type SourceFile,
     type TransformationContext,
     type TransformerFactory,
@@ -38,7 +37,7 @@ export function createRecursiveVisitorFromTransformer(
     context: DownlevelContext,
 ): ts.Transformer<ts.Node> {
     return (node: ts.Node) => {
-        const out = visitDfsPostOrdered(
+        const out = postOrderVisitor(
             node,
             (node, original) => {
                 return transformer(node, original, context);
@@ -67,14 +66,13 @@ export function mergeTransformers(
  * Note: do not use node.parent; once a node has been transformed the parent reference becomes
  * undefined or invalid, use the provided parent reference.
  */
-export function visitDfsPostOrdered(
+export function postOrderVisitor(
     node: ts.Node,
     visitor: (node: ts.Node, original: ts.Node) => VisitResult<ts.Node | undefined>,
     context?: ts.TransformationContext | undefined,
 ): ts.Node | undefined {
     const nodeVisitor = (node: ts.Node): ts.VisitResult<ts.Node | undefined> => {
         const transformed = ts.visitEachChild(node, nodeVisitor, context);
-        (transformed as any).parent = node.parent;
         return visitor(transformed, node);
     };
     return ts.visitNode(node, nodeVisitor);
@@ -84,7 +82,7 @@ export function visitDfsPostOrdered(
  * A map of semver strings to a list of transformers to apply when the target version is less than
  * the key. Use '*' as a key to apply to all nodes.
  */
-export type VersionedNodeTransformers = {
+export type VersionedDownlevelVisitors = {
     readonly [version: string]: readonly DownlevelVisitor[];
 };
 
@@ -95,7 +93,7 @@ export type VersionedNodeTransformers = {
  * @param targetVersion
  */
 export function getVisitorsToApply(
-    transformerMap: VersionedNodeTransformers,
+    transformerMap: VersionedDownlevelVisitors,
     targetVersion: SemVer,
 ): DownlevelVisitor[] {
     const visitors: DownlevelVisitor[] = [];
@@ -114,7 +112,7 @@ export function getVisitorsToApply(
  * @param context
  */
 export function createTransformerFromMap(
-    transformerMap: VersionedNodeTransformers,
+    transformerMap: VersionedDownlevelVisitors,
     context: DownlevelContext,
 ): ts.Visitor {
     const transformers = getVisitorsToApply(transformerMap, context.targetVersion);
@@ -153,4 +151,22 @@ export function transformProgramFiles(
         return createSourceFileTransformer(visitorFactory(program, context));
     };
     return ts.transform(files, [transformerFactory]).transformed.filter(ts.isSourceFile);
+}
+
+/**
+ * Down-levels all source files in a program.
+ */
+export function downlevelProgramFiles(
+    program: ts.Program,
+    targetVersion: SemVer,
+    transformerMap: VersionedDownlevelVisitors,
+): ts.SourceFile[] {
+    return transformProgramFiles(program, (program, transformationContext) => {
+        const checker = program.getTypeChecker();
+        return createTransformerFromMap(transformerMap, {
+            checker,
+            targetVersion,
+            transformationContext,
+        });
+    });
 }

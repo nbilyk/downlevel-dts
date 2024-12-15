@@ -1,3 +1,8 @@
+`@nbilyk/downlevel-dts` is a fork of downlevel-dts, continuing on the great work of
+Nathan Shively-Sanders. It is restructured to support a larger range of down-levelling semantics.
+
+---
+
 downlevel-dts rewrites .d.ts files created by any version of TypeScript so
 that they work with TypeScript 3.4 or later. It does this by
 converting code with new features into code that uses equivalent old
@@ -191,7 +196,7 @@ value imports/exports. For TS 3.7 or less, one value import/export declaration
 is emitted which will be less strict (see
 [type-only import/export](#type-only-importexport-38)).
 
-### `#private` (3.8)
+### ECMAScript #private members (3.8)
 
 TypeScript 3.8 supports the new ECMAScript-standard #private properties in
 addition to its compile-time-only private properties. Since neither
@@ -252,7 +257,7 @@ The downlevel d.ts incorrectly prevents consumers from creating a
 private property themselves named `"#private"`. The consumers of the
 d.ts **also** shouldn't do this.
 
-### `export * from 'x'` (3.8)
+### Star Exports (3.8)
 
 TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` syntax, which is just syntactic sugar for two import/export
 statements:
@@ -272,7 +277,7 @@ export { ns_1 as ns };
 
 The downlevel semantics should be exactly the same as the original.
 
-### `[named: number, tuple: string, ...members: boolean[]]` (4.0)
+### Named Tuples (4.0)
 
 TypeScript 4.0 supports naming tuple members:
 
@@ -294,6 +299,26 @@ be replaced with unnamed members.
 
 The downlevel semantics are exactly the same as the original, but
 the TypeScript language service won't be able to show the member names.
+
+### Recursive conditional types (4.1)
+
+https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-1.html#recursive-conditional-types
+Typescript 4.1 supports recursive conditional types.
+
+```typescript
+type ElementType<T> = T extends ReadonlyArray<infer U> ? ElementType<U> : T;
+```
+
+becomes
+
+```typescript
+type ElementType<T> = T extends ReadonlyArray<infer U> ? any : T;
+```
+
+#### Semantics
+
+There is not an equivalent in older typescript versions. `any` will be used in the recursive
+branches in order to allow compilation.
 
 ### `in out T` (4.7)
 
@@ -317,7 +342,8 @@ interface State<T> {
 
 #### Semantics
 
-The downlevel .d.ts omits the variance annotations, which will change the variance in the cases where they were added because the compiler gets it wrong.
+The downlevel .d.ts omits the variance annotations, which will change the variance in the cases
+where they were added because the compiler gets it wrong.
 
 ## Target
 
