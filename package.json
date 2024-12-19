@@ -5,12 +5,17 @@
     "homepage": "https://github.com/sandersn/downlevel-dts",
     "main": "dist/index.js",
     "bin": "dist/index.js",
-    "files": ["./dist", "README.md", "LICENSE"],
+    "files": [
+        "./dist",
+        "README.md",
+        "LICENSE"
+    ],
     "scripts": {
         "prepare": "husky",
+        "lint": "prettier . --check",
         "lint:fix": "prettier . --write",
         "test": "jest",
-        "validate": "npm run lint:fix && npm run test",
+        "validate": "npm run lint && npm run test",
         "build": "tsc --project src/tsconfig.json && node scripts/makeExecutable.js",
         "baseline-accept": "cp -r test/integ/baselines/actual/ts* test/integ/baselines/expected",
         "test:compiler": "npm run build && npm run test && ./scripts/testAllVersions.sh"
