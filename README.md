@@ -358,18 +358,32 @@ down-levelled, nor are there any other plans to support TypeScript 2.x.
 
 ## Usage
 
-1. `$ npm install downlevel-dts`
-2. `$ npx downlevel-dts . ts3.4 [--to=3.4]`
-3. To your package.json, add
+Usage: `npx @nbilyk/downlevel-dts src dest [--to=3.4]`
+
+Example: `npx @nbilyk/downlevel-dts ts5.4 ts{VERSION} --to=3.4,4.1,4.8,4.9`
+
+- src - The directory containing the source d.ts files.
+- dest - The destination directory. If multiple versions are provided, this must contain a
+  `{VERSION}` substitution token. E.g. `dist/ts{VERSION}`
+- --to - The version(s) to downlevel to. May be comma-delimited.
+
+To your package.json, add:
+
+_Important Note_: TypeScript 4.9 now correctly prioritizes `exports` over `typesVersions`.
+If packaging for <4.9 use typesVersions for backwards compatibility.
 
 ```json
 {
+    "exports": {
+        ".": {
+            ">=5.4": { ".": ["ts5.4/*"] },
+            ">=4.9": { ".": ["ts4.9/*"] }
+        }
+    },
     "typesVersions": {
-        "<4.0": { "*": ["ts3.4/*"] }
+        ">=4.8": { ".": ["ts4.8/*"] },
+        ">=4.1": { ".": ["ts4.1/*"] },
+        ">=3.4": { ".": ["ts3.4/*"] }
     }
 }
 ```
-
-4. `$ cp tsconfig.json ts3.9/tsconfig.json`
-
-These instructions are modified and simplified from the Definitely Typed ones.

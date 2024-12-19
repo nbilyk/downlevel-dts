@@ -5,8 +5,8 @@ import { globSync } from 'glob';
 import path from 'node:path';
 
 const SRC_DIR = 'test/integ/original';
-const OUT_DIR_BASE = 'test/integ/baselines/actual';
-const EXPECTED_DIR_BASE = 'test/integ/baselines/expected';
+const OUT_DIR = 'test/integ/baselines/actual';
+const EXPECTED_DIR = 'test/integ/baselines/expected';
 
 const VERSIONS = [
     '3.4',
@@ -37,21 +37,20 @@ const VERSIONS = [
 
 describe('downlevelDts', () => {
     beforeAll(() => {
-        fs.rmSync(OUT_DIR_BASE, { recursive: true, force: true });
+        fs.rmSync(OUT_DIR, { recursive: true, force: true });
+        downlevelDts({
+            src: SRC_DIR,
+            target: `${OUT_DIR}/ts{VERSION}`,
+            targetVersion: VERSIONS,
+        });
     }, /* timeout */ 10 * 1000);
 
     for (const tsVersion of VERSIONS) {
         test(
             `downlevel TS to ${tsVersion}`,
             () => {
-                const outDir = `${OUT_DIR_BASE}/ts${tsVersion}`;
-                const expectedDir = `${EXPECTED_DIR_BASE}/ts${tsVersion}`;
-
-                downlevelDts({
-                    src: SRC_DIR,
-                    target: outDir,
-                    targetVersion: tsVersion,
-                });
+                const outDir = `${OUT_DIR}/ts${tsVersion}`;
+                const expectedDir = `${EXPECTED_DIR}/ts${tsVersion}`;
 
                 const dtsFiles = globSync(`${expectedDir}/**/*.d.ts`);
                 if (!dtsFiles.length) fail('d.ts files not found');
