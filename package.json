@@ -5,6 +5,7 @@
     "homepage": "https://github.com/sandersn/downlevel-dts",
     "main": "dist/index.js",
     "bin": "dist/index.js",
+    "files": ["./dist", "README.md", "LICENSE"],
     "scripts": {
         "prepare": "husky",
         "lint:fix": "prettier . --write",
