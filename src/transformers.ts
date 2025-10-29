@@ -516,6 +516,23 @@ const tupleMixedNames: DownlevelVisitor = (node, original) => {
     return node;
 };
 
+const constTypeParameters: DownlevelVisitor = (node) => {
+    if (ts.isTypeParameterDeclaration(node) && node.modifiers) {
+        const filteredModifiers = node.modifiers.filter(
+            (modifier) => modifier.kind !== ts.SyntaxKind.ConstKeyword,
+        );
+        if (filteredModifiers.length !== node.modifiers.length) {
+            return ts.factory.createTypeParameterDeclaration(
+                filteredModifiers.length > 0 ? filteredModifiers : undefined,
+                node.name,
+                node.constraint,
+                node.default,
+            );
+        }
+    }
+    return node;
+};
+
 /**
  * A map of versions to transformers where the version is the maximum version for which the
  * transformer should be applied.
@@ -530,6 +547,7 @@ export const transformerMap: VersionedDownlevelVisitors = {
     '4.3.0': [interfaceAccessors],
     '4.5.0': [mixedTypeImports],
     '4.7.0': [typeParameterDeclaration],
+    '5.0.0': [constTypeParameters],
     '5.1.0': [unrelatedSetAccessor],
     '5.2.0': [tupleMixedNames],
     '*': [],

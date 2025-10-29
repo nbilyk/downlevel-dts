@@ -345,6 +345,29 @@ interface State<T> {
 The downlevel .d.ts omits the variance annotations, which will change the variance in the cases
 where they were added because the compiler gets it wrong.
 
+### `const` type parameters (5.0)
+
+TypeScript 5.0 supports `const` type parameters:
+
+```typescript
+// 5.0 const type parameters
+declare function constTypeParameters<const T extends string[], const U extends object>(
+    arg0: T,
+    arg1: U,
+): void;
+```
+
+becomes:
+
+```typescript
+// 5.0 const type parameters
+declare function constTypeParameters<T extends string[], U extends object>(arg0: T, arg1: U): void;
+```
+
+#### Semantics
+
+The downlevel .d.ts omits the `const` modifier, which will change the inference behavior. The `const` modifier causes TypeScript to infer the most specific type possible, but without it, TypeScript will infer a more general type.
+
 ## Target
 
 Since the earliest downlevel feature is from TypeScript 3.5,

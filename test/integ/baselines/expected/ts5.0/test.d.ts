@@ -165,6 +165,8 @@ type NotImmediatelyRecursive<T> = T extends ReadonlyArray<infer U> ? [
 ] : T;
 type RecursiveConditionalTypeA<T> = T extends true ? RecursiveConditionalTypeB<T> : never;
 type RecursiveConditionalTypeB<T> = T extends false ? RecursiveConditionalTypeA<T> : never;
+// 5.0 const type parameters
+declare function constTypeParameters<const T extends string[], const U extends object>(arg0: T, arg1: U): void;
 // 5.2 - Mixed named tuples
 type MixedNamedTuple = [
     /*foo*/ string,
