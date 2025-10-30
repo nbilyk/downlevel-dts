@@ -533,6 +533,21 @@ const constTypeParameters: DownlevelVisitor = (node) => {
     return node;
 };
 
+const noInferType: DownlevelVisitor = (node, _original, context) => {
+    if (isTypeReference(node, 'NoInfer')) {
+        const symbol = context.checker.getSymbolAtLocation(
+            ts.isTypeReferenceNode(node) ? node.typeName : node.expression,
+        );
+        const typeArguments = node.typeArguments;
+
+        if (isStdLibSymbol(symbol) && typeArguments && typeArguments.length === 1) {
+            // NoInfer<T> becomes T
+            return typeArguments[0];
+        }
+    }
+    return node;
+};
+
 /**
  * A map of versions to transformers where the version is the maximum version for which the
  * transformer should be applied.
@@ -550,5 +565,6 @@ export const transformerMap: VersionedDownlevelVisitors = {
     '5.0.0': [constTypeParameters],
     '5.1.0': [unrelatedSetAccessor],
     '5.2.0': [tupleMixedNames],
+    '5.4.0': [noInferType],
     '*': [],
 };

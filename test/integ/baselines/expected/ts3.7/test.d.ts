@@ -159,3 +159,11 @@ type NestedMixedNamedTuple = [
         /*bar*/ number
     ]
 ];
+// 5.4 - NoInfer utility type
+declare function createStreetLight<C extends string>(colors: C[], defaultColor: C): void;
+type NoInferExample<T> = T;
+type NestedNoInfer<T> = {
+    value: T;
+    other: string;
+};
+declare function complexNoInfer<T, U>(a: T, b: T, c: U[]): U;

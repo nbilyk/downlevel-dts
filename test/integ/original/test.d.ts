@@ -171,3 +171,9 @@ declare function constTypeParameters<const T extends string[], const U extends o
 // 5.2 - Mixed named tuples
 type MixedNamedTuple = [foo: string, number]
 type NestedMixedNamedTuple = [[foo: string, number], named: [string, bar: number]]
+
+// 5.4 - NoInfer utility type
+declare function createStreetLight<C extends string>(colors: C[], defaultColor: NoInfer<C>): void;
+type NoInferExample<T> = NoInfer<T>;
+type NestedNoInfer<T> = { value: NoInfer<T>; other: string };
+declare function complexNoInfer<T, U>(a: T, b: NoInfer<T>, c: U[]): NoInfer<U>;

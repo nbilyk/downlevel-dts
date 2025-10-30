@@ -82,13 +82,16 @@ for more detail.
 
 ### `asserts` assertion guards (3.7)
 
-TypeScript 3.7 introduced the `asserts` keyword, which provides a way to indicate that a function will throw if a parameter doesn't meet a condition.
-This allows TypeScript to understand that whatever condition such a function checks must be true for the remainder of the containing scope.
+TypeScript 3.7 introduced the `asserts` keyword, which provides a way to indicate that a function will throw if a
+parameter doesn't meet a condition.
+This allows TypeScript to understand that whatever condition such a function checks must be true for the remainder of
+the containing scope.
 
 Since there is no way to model this before 3.7, such functions are down-levelled to return `void`:
 
 ```typescript
 declare function assertIsString(val: any, msg?: string): asserts val is string;
+
 declare function assert(val: any, msg?: string): asserts val;
 ```
 
@@ -96,6 +99,7 @@ becomes
 
 ```typescript
 declare function assertIsString(val: any, msg?: string): void;
+
 declare function assert(val: any, msg?: string): void;
 ```
 
@@ -120,6 +124,7 @@ constructable:
 
 ```typescript
 declare class C {}
+
 export type { C };
 ```
 
@@ -127,6 +132,7 @@ becomes
 
 ```typescript
 declare class C {}
+
 export { C };
 ```
 
@@ -134,6 +140,7 @@ and the latter allows construction:
 
 ```typescript
 import { C } from 'x';
+
 var c = new C();
 ```
 
@@ -147,6 +154,7 @@ modifiers
 
 ```typescript
 import { type A, type B } from 'x';
+
 export { type A, type B };
 ```
 
@@ -155,10 +163,12 @@ becomes:
 ```typescript
 // TS 3.8+
 import type { A, B } from 'x';
+
 export type { A, B };
 
 // TS 3.7 or less
 import { A, B } from 'x';
+
 export { A, B };
 ```
 
@@ -166,6 +176,7 @@ A mixed import/export declaration
 
 ```typescript
 import { A, type B } from 'x';
+
 export { A, type B };
 ```
 
@@ -175,11 +186,13 @@ becomes:
 // TS 3.8+
 import type { B } from 'x';
 import { A } from 'x';
+
 export type { B };
 export { A };
 
 // TS 3.7 or less
 import { A, B } from 'x';
+
 export { A, B };
 ```
 
@@ -259,7 +272,8 @@ d.ts **also** shouldn't do this.
 
 ### Star Exports (3.8)
 
-TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` syntax, which is just syntactic sugar for two import/export
+TypeScript 3.8 supports the new ECMAScript-standard `export * as namespace` syntax, which is just syntactic sugar for
+two import/export
 statements:
 
 ```typescript
@@ -270,6 +284,7 @@ becomes
 
 ```typescript
 import * as ns_1 from 'x';
+
 export { ns_1 as ns };
 ```
 
@@ -366,7 +381,28 @@ declare function constTypeParameters<T extends string[], U extends object>(arg0:
 
 #### Semantics
 
-The downlevel .d.ts omits the `const` modifier, which will change the inference behavior. The `const` modifier causes TypeScript to infer the most specific type possible, but without it, TypeScript will infer a more general type.
+The downlevel .d.ts omits the `const` modifier, which will change the inference behavior. The `const` modifier causes
+TypeScript to infer the most specific type possible, but without it, TypeScript will infer a more general type.
+
+### `NoInfer<T>` (5.4)
+
+TypeScript 5.4 supports the `NoInfer<T>` utility type:
+
+```typescript
+declare function createStreetLight<C extends string>(colors: C[], defaultColor: NoInfer<C>): void;
+```
+
+becomes:
+
+```typescript
+declare function createStreetLight<C extends string>(colors: C[], defaultColor: C): void;
+```
+
+#### Semantics
+
+`NoInfer<T>` is a utility type that prevents TypeScript from inferring the type `T` in generic contexts. The downlevel
+.d.ts simply removes the `NoInfer` wrapper, which will change the inference behavior. Without `NoInfer`, TypeScript may
+infer broader types in some cases where the original code intended to prevent inference.
 
 ## Target
 
@@ -399,14 +435,24 @@ If packaging for <4.9 use typesVersions for backwards compatibility.
 {
     "exports": {
         ".": {
-            ">=5.4": { ".": ["ts5.4/*"] },
-            ">=4.9": { ".": ["ts4.9/*"] }
+            ">=5.4": {
+                ".": ["ts5.4/*"]
+            },
+            ">=4.9": {
+                ".": ["ts4.9/*"]
+            }
         }
     },
     "typesVersions": {
-        ">=4.8": { ".": ["ts4.8/*"] },
-        ">=4.1": { ".": ["ts4.1/*"] },
-        ">=3.4": { ".": ["ts3.4/*"] }
+        ">=4.8": {
+            ".": ["ts4.8/*"]
+        },
+        ">=4.1": {
+            ".": ["ts4.1/*"]
+        },
+        ">=3.4": {
+            ".": ["ts3.4/*"]
+        }
     }
 }
 ```
