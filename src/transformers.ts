@@ -548,6 +548,45 @@ const noInferType: DownlevelVisitor = (node, _original, context) => {
     return node;
 };
 
+const genericTypedArrays: DownlevelVisitor = (node, _original, context) => {
+    if (!(node as { typeArguments?: any }).typeArguments) {
+        // ignore any nodes without type arguments
+        return node;
+    }
+
+    const typedArrays = [
+        'DataView',
+        'Int8Array',
+        'Uint8Array',
+        'Uint8ClampedArray',
+        'Int16Array',
+        'Uint16Array',
+        'Int32Array',
+        'Uint32Array',
+        'Float32Array',
+        'Float64Array',
+        'BigInt64Array',
+        'BigUint64Array',
+    ];
+
+    for (const arrayType of typedArrays) {
+        if (isTypeReference(node, arrayType)) {
+            const symbol = context.checker.getSymbolAtLocation(
+                ts.isTypeReferenceNode(node) ? node.typeName : node.expression,
+            );
+            const typeArguments = node.typeArguments;
+
+            if (isStdLibSymbol(symbol) && typeArguments && typeArguments.length > 0) {
+                // 5.7 allows generic TypedArrays
+                // https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-7.html#support-for---target-es2024-and---lib-es2024
+                // to convert backwards, remove type arguments: e.g. Uint8Array<T> becomes Uint8Array
+                return ts.factory.createTypeReferenceNode(ts.factory.createIdentifier(arrayType));
+            }
+        }
+    }
+    return node;
+};
+
 /**
  * A map of versions to transformers where the version is the maximum version for which the
  * transformer should be applied.
@@ -566,5 +605,6 @@ export const transformerMap: VersionedDownlevelVisitors = {
     '5.1.0': [unrelatedSetAccessor],
     '5.2.0': [tupleMixedNames],
     '5.4.0': [noInferType],
+    '5.7.0': [genericTypedArrays],
     '*': [],
 };
