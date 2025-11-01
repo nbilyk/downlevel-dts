@@ -404,6 +404,31 @@ declare function createStreetLight<C extends string>(colors: C[], defaultColor: 
 .d.ts simply removes the `NoInfer` wrapper, which will change the inference behavior. Without `NoInfer`, TypeScript may
 infer broader types in some cases where the original code intended to prevent inference.
 
+### `TypedArray<TArrayBuffer>` (`Int8Array<TArrayBuffer>`, `Uint8Array<TArrayBuffer>`, ...) (5.7)
+
+TypeScript 5.7 supports `--target es2024` and `--lib es2024`. The changed typings now have a type parameter for
+`TypedArrays` and `DataView`:
+
+```typescript
+type MyTypedArrays = Int8Array<ArrayBuffer> | Uint8ClampedArray<ArrayBuffer>;
+```
+
+becomes:
+
+```typescript
+type MyTypedArrays = Int8Array | Uint8ClampedArray;
+```
+
+#### Semantics
+
+Prior to ES2024, the interface for `SharedArrayBuffer` was assignment-compatible with `ArrayBuffer`, which meant that APIs
+that declared that they accepted an `ArrayBuffer` would blindly accept a `SharedArrayBuffer` without complaining, despite
+`SharedArrayBuffer` being an invalid argument at runtime.
+
+Since TypeScript 5.7 each `TypedArray` now contains a type parameter named `TArrayBuffer`, though that type parameter has a
+default type argument so that we can continue to refer to `Int32Array` without explicitly writing out
+`Int32Array<ArrayBufferLike>`.
+
 ## Target
 
 Since the earliest downlevel feature is from TypeScript 3.5,

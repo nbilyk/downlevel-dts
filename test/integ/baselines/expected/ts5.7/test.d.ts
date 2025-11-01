@@ -190,3 +190,11 @@ type NestedNoInfer<T> = {
     other: string;
 };
 declare function complexNoInfer<T, U>(a: T, b: NoInfer<T>, c: U[]): NoInfer<U>;
+// 5.7 - Generic TypedArrays
+type CustomDataView = DataView<ArrayBuffer>;
+type CustomInt8Array = Int8Array<ArrayBuffer>;
+type CustomUintArrays = Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer>;
+type CustomUint8ClampedArray = Uint8ClampedArray<ArrayBuffer>;
+type IntArrayToFloat32Func = (int16: Int16Array<ArrayBuffer>, int32: Int32Array<ArrayBuffer>) => Float32Array<ArrayBuffer>;
+type Float64Record = Record<string, Float64Array<ArrayBuffer>>;
+type CustomBigIntArrays = BigInt64Array<ArrayBuffer> | BigUint64Array<ArrayBuffer>;
