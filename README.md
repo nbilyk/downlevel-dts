@@ -417,14 +417,15 @@ down-levelled, nor are there any other plans to support TypeScript 2.x.
 
 ## Usage
 
-Usage: `npx @nbilyk/downlevel-dts src dest [--to=3.4]`
+Usage: `npx @nbilyk/downlevel-dts src dest [--to=3.4] [--nl=LF]`
 
-Example: `npx @nbilyk/downlevel-dts ts5.4 ts{VERSION} --to=3.4,4.1,4.8,4.9`
+Example: `npx @nbilyk/downlevel-dts ts5.4 ts{VERSION} --to=3.4,4.1,4.8,4.9 --nl=CRLF`
 
 - src - The directory containing the source d.ts files.
 - dest - The destination directory. If multiple versions are provided, this must contain a
   `{VERSION}` substitution token. E.g. `dist/ts{VERSION}`
 - --to - The version(s) to downlevel to. May be comma-delimited.
+- --nl - The line ending style to use in output files: one of `LF` | `CRLF`. Default is `LF`.
 
 To your package.json, add:
 
