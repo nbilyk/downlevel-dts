@@ -18,9 +18,14 @@ export type DownlevelOptions = {
     readonly target: string;
 
     /**
-     * The target version(s) to transpile down to. Default is `[3.4]`
+     * The target version(s) to transpile down to. Default is `[3.4]`.
      */
     readonly targetVersion?: string | readonly string[] | undefined;
+
+    /**
+     * The line ending style to use in output files. Default is `LF`.
+     */
+    readonly newLine?: 'CRLF' | 'LF' | undefined;
 };
 
 export function downlevelDts(options: DownlevelOptions) {
@@ -33,8 +38,13 @@ export function downlevelDts(options: DownlevelOptions) {
     const dtsFiles = globSync(`${src}/**/*.d.ts`, {
         ignore: '**/node_modules/**',
     });
+    ts.convertCompilerOptionsFromJson;
+    const newLineOption = options.newLine ? options.newLine : 'LF';
     const printer = ts.createPrinter({
-        newLine: ts.NewLineKind.CarriageReturnLineFeed,
+        newLine:
+            newLineOption === 'CRLF'
+                ? ts.NewLineKind.CarriageReturnLineFeed
+                : ts.NewLineKind.LineFeed,
     });
     const program = ts.createProgram({
         rootNames: dtsFiles,

@@ -20,9 +20,25 @@ dest - The destination directory. This may contain a {VERSION} substitution toke
         const userInput = to.split('=')[1];
         if (userInput) targetVersion = userInput.split(',');
     }
+    const nl = process.argv.find((arg) => arg.startsWith('--nl'));
+    let newLine: 'CRLF' | 'LF' | undefined = undefined;
+    if (nl) {
+        let userInput = nl.split('=')[1];
+        if (userInput) {
+            userInput = userInput.toUpperCase();
+            if (!['CRLF', 'LF'].includes(userInput)) {
+                console.error(
+                    `Invalid value for --nl. Expected 'CRLF' or 'LF', got '${userInput}'`,
+                );
+                process.exit(1);
+            }
+            newLine = userInput as 'CRLF' | 'LF';
+        }
+    }
     downlevelDts({
         src,
         target,
         targetVersion,
+        newLine,
     });
 }
