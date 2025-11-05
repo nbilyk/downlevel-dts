@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/nbilyk/downlevel-dts/compare/@nbilyk/downlevel-dts@0.14.1...@nbilyk/downlevel-dts@0.15.0) (2025-11-05)
+
+### Features
+
+- remove type parameter from TypedArrays ([88c42ba](https://github.com/nbilyk/downlevel-dts/commit/88c42ba391a85b7f337a0051a94fb30423e9dde7))
+
 ## [0.14.1](https://github.com/nbilyk/downlevel-dts/compare/@nbilyk/downlevel-dts@0.14.0...@nbilyk/downlevel-dts@0.14.1) (2025-11-05)
 
 **Note:** Version bump only for package @nbilyk/downlevel-dts
