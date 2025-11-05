@@ -1,3 +1,5 @@
+[![npm version](https://badge.fury.io/js/@nbilyk%2Fdownlevel-dts.svg)](https://badge.fury.io/js/@nbilyk%2Fdownlevel-dts)
+
 `@nbilyk/downlevel-dts` is a fork of downlevel-dts, continuing on the great work of
 Nathan Shively-Sanders. It is restructured to support a larger range of down-levelling semantics.
 
