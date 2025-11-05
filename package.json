@@ -1,6 +1,6 @@
 {
     "name": "@nbilyk/downlevel-dts",
-    "version": "0.15.0",
+    "version": "0.15.1",
     "description": "Convert d.ts to be compatible with older typescript compilers. A branch/continuation of sandersn/downlevel-dts.",
     "homepage": "https://github.com/nbilyk/downlevel-dts",
     "main": "dist/index.js",
