@@ -1,5 +1,11 @@
 {
     "$schema": "node_modules/lerna/schemas/lerna-schema.json",
     "version": "independent",
-    "packages": ["."]
+    "packages": ["."],
+    "command": {
+        "version": {
+            "conventionalCommits": true,
+            "allowBranch": "main"
+        }
+    }
 }
