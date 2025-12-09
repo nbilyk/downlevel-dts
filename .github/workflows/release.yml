@@ -35,6 +35,9 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
+            - name: Build
+              run: npm run build
+
             - name: Create versions & changelogs
               run: npx lerna version --create-release github --yes
               env:
