@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.15.2](https://github.com/nbilyk/downlevel-dts/compare/@nbilyk/downlevel-dts@0.15.1...@nbilyk/downlevel-dts@0.15.2) (2025-12-10)
+
+**Note:** Version bump only for package @nbilyk/downlevel-dts
+
 ## [0.15.1](https://github.com/nbilyk/downlevel-dts/compare/@nbilyk/downlevel-dts@0.15.0...@nbilyk/downlevel-dts@0.15.1) (2025-11-05)
 
 **Note:** Version bump only for package @nbilyk/downlevel-dts
